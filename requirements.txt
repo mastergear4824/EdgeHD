@@ -1,4 +1,4 @@
-# AI 이미지 처리 도구 - 필수 패키지
+# AI 이미지/비디오 처리 도구 - 필수 패키지
 
 # 웹 프레임워크
 Flask==3.0.0
@@ -29,7 +29,6 @@ requests>=2.31.0
 # 1. Apple Silicon 사용자는 PYTORCH_ENABLE_MPS_FALLBACK=1 환경변수 설정 필요
 # 2. GPU 가속을 위해 적절한 PyTorch 버전 설치 (CUDA/MPS)
 # 3. 시스템에 따라 torch 설치 방법이 다를 수 있음:
-#    - Apple Silicon: pip install torch torchvision torchaudio
-#    - CUDA 11.8: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-#    - CUDA 12.1: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
-#    - CPU only: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu 
+#    - Apple Silicon: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0
+#    - CUDA 11.8: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+#    - CPU only: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu 

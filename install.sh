@@ -92,7 +92,7 @@ pip install -r requirements.txt
 
 # AI 모델 추가 의존성
 echo "🤖 AI 모델 의존성 설치 중..."
-pip install transformers einops kornia timm realesrgan
+pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
 
 # 프로젝트 내 모델 저장 설정
 echo "🤖 AI 모델 설정 중..."

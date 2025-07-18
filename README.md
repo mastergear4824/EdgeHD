@@ -193,7 +193,7 @@ pip install -r requirements.txt
 
 # 주요 패키지 수동 확인 (이미 requirements.txt에 포함됨)
 pip install torch==2.1.0 torchvision==0.16.0 transformers==4.35.0
-pip install einops kornia timm realesrgan==0.3.0
+pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
 
 # 설치 확인
 pip list | grep -E "(torch|transformers|einops|kornia|timm|realesrgan)"
@@ -400,7 +400,7 @@ export PYTORCH_ENABLE_MPS_FALLBACK=1
 ```bash
 # 의존성 재설치 (Real-ESRGAN v0.3.0 호환 버전)
 pip uninstall -r requirements.txt -y
-pip install torch==2.1.0 torchvision==0.16.0 transformers==4.35.0
+pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 transformers==4.35.0
 pip install -r requirements.txt
 ```
 

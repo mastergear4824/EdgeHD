@@ -1,0 +1,2604 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>:::AICLUDE EdgeHD:::</title>
+    {% if work_data %}
+    <meta name="work-data" content="{{ work_data | tojson | e }}" />
+    {% endif %}
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow-x: hidden;
+      }
+
+      .header {
+        text-align: center;
+        padding: 20px;
+        color: white;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
+
+      /* 모드 전환 탭 */
+      .mode-tabs {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 15px;
+      }
+
+      .mode-tab {
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white;
+        padding: 8px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+      }
+
+      .mode-tab:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .mode-tab.active {
+        background: white;
+        color: #667eea;
+        border-color: white;
+      }
+
+      .main-container {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        padding: 0 20px 20px;
+        max-height: calc(100vh - 160px);
+        min-height: 500px;
+        transition: grid-template-columns 0.3s ease;
+      }
+
+      .main-container.upload-only {
+        grid-template-columns: 1fr;
+        justify-items: center;
+      }
+
+      .left-panel {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 350px;
+        position: relative;
+      }
+
+      .right-panel {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+        display: none;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        min-height: 350px;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+
+      .right-panel.visible {
+        display: flex;
+      }
+
+      /* 업로드 영역 */
+      .upload-area {
+        border: 3px dashed #ddd;
+        border-radius: 12px;
+        padding: 40px 15px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: #fafafa;
+        text-align: center;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .upload-area:hover {
+        border-color: #667eea;
+        background: #f0f4ff;
+      }
+
+      .upload-area.dragover {
+        border-color: #667eea;
+        background: #e8f0ff;
+        transform: scale(1.02);
+      }
+
+      .upload-icon {
+        font-size: 3em;
+        color: #ddd;
+        margin-bottom: 20px;
+      }
+
+      .upload-text {
+        color: #666;
+        font-size: 1.2em;
+        margin-bottom: 10px;
+      }
+
+      .upload-subtext {
+        color: #999;
+        font-size: 0.9em;
+      }
+
+      #fileInput,
+      #videoFileInput {
+        display: none;
+      }
+
+      /* 비디오 모드 UI */
+      .video-mode {
+        display: none;
+      }
+
+      .video-mode.active {
+        display: block;
+      }
+
+      .image-mode.hidden {
+        display: none;
+      }
+
+      .video-upload-area {
+        border: 3px dashed #ddd;
+        border-radius: 12px;
+        padding: 40px 15px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: #f9f9f9;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .video-upload-area:hover {
+        border-color: #aaa;
+        background: #f0f0f0;
+      }
+
+      .video-upload-area.dragover {
+        border-color: #667eea;
+        background: #e8f0ff;
+        transform: scale(1.02);
+      }
+
+      .video-options {
+        background: white;
+        padding: 20px;
+        border-radius: 15px;
+        margin-top: 20px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .option-group {
+        margin-bottom: 15px;
+      }
+
+      .option-group label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        padding: 8px;
+        border-radius: 8px;
+        transition: background 0.2s ease;
+      }
+
+      .option-group label:hover {
+        background: #f5f5f5;
+      }
+
+      .option-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+      }
+
+      .scale-options {
+        display: none;
+        margin-left: 30px;
+        margin-top: 10px;
+        gap: 10px;
+      }
+
+      .scale-options.visible {
+        display: flex;
+      }
+
+      .scale-option label {
+        background: #f0f0f0;
+        padding: 5px 15px;
+        border-radius: 15px;
+        font-size: 0.9em;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+
+      .scale-option input[type="radio"] {
+        margin-right: 5px;
+      }
+
+      .scale-option label:hover {
+        background: #e0e0e0;
+      }
+
+      /* 비디오 정보 카드들 (왼쪽 패널에 가로 배치) */
+      .video-info-container {
+        display: flex;
+        gap: 15px;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+
+      .video-info-card {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        flex: 1;
+        min-width: 200px;
+      }
+
+      .video-info-title {
+        font-size: 1em;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .video-info-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 6px;
+        font-size: 0.85em;
+      }
+
+      .video-info-label {
+        color: #666;
+        font-weight: 500;
+      }
+
+      .video-info-value {
+        color: #333;
+        font-weight: 600;
+      }
+
+      /* 배경 색상 선택 팝업 */
+      .background-color-popup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      .popup-content {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        max-width: 400px;
+        width: 90%;
+        max-height: 80vh;
+        overflow-y: auto;
+        position: relative;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .popup-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #f0f0f0;
+      }
+
+      .popup-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        color: #333;
+      }
+
+      .close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5em;
+        cursor: pointer;
+        color: #999;
+        padding: 5px;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+      }
+
+      .close-btn:hover {
+        background: #f0f0f0;
+        color: #333;
+      }
+
+      .background-color-section {
+        margin-bottom: 20px;
+      }
+
+      .color-section-title {
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 1.1em;
+      }
+
+      .preset-colors {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      .color-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 3px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        font-size: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .color-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .color-btn.active {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        transform: scale(1.15);
+      }
+
+      .custom-color-section {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        justify-content: center;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 10px;
+      }
+
+      .custom-color-section label {
+        font-weight: 600;
+        color: #666;
+      }
+
+      .custom-color-picker {
+        width: 50px;
+        height: 50px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .popup-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+      }
+
+      .popup-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 12px 25px;
+        border-radius: 25px;
+        font-size: 1em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 120px;
+      }
+
+      .popup-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .popup-btn.cancel {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      }
+
+      /* 처리 메시지 (패널에 직접 표시) */
+      .processing-message {
+        background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+        margin: 20px 0;
+        animation: fadeInMessage 0.5s ease-in;
+        box-shadow: 0 8px 25px rgba(78, 205, 196, 0.3);
+      }
+
+      .processing-main-message {
+        font-size: 1.2em;
+        font-weight: 600;
+        margin-bottom: 10px;
+        line-height: 1.4;
+      }
+
+      .processing-tip-message {
+        font-size: 0.95em;
+        opacity: 0.9;
+        font-style: italic;
+        line-height: 1.3;
+      }
+
+      @keyframes fadeInMessage {
+        from {
+          opacity: 0;
+          transform: translateY(15px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* 비디오 완료 결과 */
+      .video-result-section {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin: 20px 0;
+        text-align: center;
+        animation: fadeInMessage 0.5s ease-in;
+        box-shadow: 0 8px 25px rgba(76, 175, 80, 0.3);
+      }
+
+      .result-title {
+        font-size: 1.3em;
+        font-weight: 700;
+        margin-bottom: 15px;
+      }
+
+      /* 이미지 표시 영역 */
+      .image-display-area {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        height: 100%;
+      }
+
+      .image-display-area.visible {
+        display: flex;
+      }
+
+      /* 비디오 처리 상태 표시 영역 */
+      .video-status-area {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        height: 100%;
+        padding: 15px;
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f3ff 100%);
+        border-radius: 12px;
+        overflow-y: auto;
+      }
+
+      .video-status-area.visible {
+        display: flex;
+      }
+
+      .processing-status-container {
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        max-width: 350px;
+        margin-bottom: 15px;
+      }
+
+      .fun-message-card {
+        background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+        color: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        text-align: center;
+        animation: fadeInMessage 0.5s ease-in;
+        width: 100%;
+        min-height: 80px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .fun-message {
+        font-size: 0.85em;
+        line-height: 1.3;
+        margin-bottom: 4px;
+      }
+
+      .fun-tip {
+        font-size: 0.75em;
+        opacity: 0.9;
+        font-style: italic;
+        line-height: 1.2;
+      }
+
+      .fun-message {
+        font-size: 1em;
+        line-height: 1.4;
+        margin-bottom: 8px;
+      }
+
+      .fun-tip {
+        font-size: 0.85em;
+        opacity: 0.9;
+        font-style: italic;
+      }
+
+      .video-result-area {
+        background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+        color: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 15px;
+        width: 100%;
+        max-width: 300px;
+        text-align: center;
+        animation: fadeInMessage 0.5s ease-in;
+      }
+
+      .image-container {
+        position: relative;
+        max-width: 100%;
+        max-height: 50vh;
+        margin-bottom: 15px;
+      }
+
+      .image-display {
+        max-width: 100%;
+        max-height: 50vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      /* 비디오 표시 영역 */
+      .video-display-area {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        height: 100%;
+      }
+
+      .video-display-area.visible {
+        display: flex;
+      }
+
+      .video-container {
+        position: relative;
+        max-width: 100%;
+        max-height: 50vh;
+        margin-bottom: 15px;
+      }
+
+      .video-display {
+        max-width: 100%;
+        max-height: 50vh;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        background: #000;
+      }
+
+      .video-info-display {
+        background: linear-gradient(135deg, #f8f9ff 0%, #f0f3ff 100%);
+        border-radius: 6px;
+        padding: 10px;
+        margin-bottom: 12px;
+        font-size: 0.85em;
+        color: #666;
+        max-width: 100%;
+        text-align: left;
+      }
+
+      .video-info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+
+      .video-info-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .video-info-label {
+        font-weight: 500;
+      }
+
+      .video-info-value {
+        color: #333;
+        font-weight: 600;
+      }
+
+      .image-label {
+        margin: 12px 0 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 1em;
+      }
+
+      /* 액션 버튼들 */
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-top: 15px;
+      }
+
+      .btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 20px;
+        font-size: 0.9em;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 100px;
+      }
+
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+      }
+
+      .btn.upscale-2x {
+        background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+      }
+
+      .btn.upscale-4x {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+      }
+
+      .btn.background-remove {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .btn.download {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+      }
+
+      .btn.reset {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+      }
+
+      /* 색상 선택 버튼 */
+      .color-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .color-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .color-btn.active {
+        border-color: #667eea !important;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.3);
+        transform: scale(1.1);
+      }
+
+      /* 메시지 */
+      .message-container {
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 1000;
+        max-width: 90%;
+      }
+
+      .error-message {
+        color: #e74c3c;
+        background: #ffeaea;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #e74c3c;
+      }
+
+      .success-message {
+        color: #27ae60;
+        background: #eafaf1;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 4px solid #27ae60;
+      }
+
+      /* 빈 상태 */
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        height: 100%;
+      }
+
+      .empty-state.hide {
+        display: none;
+      }
+
+      .empty-icon {
+        font-size: 3em;
+        margin-bottom: 15px;
+        opacity: 0.5;
+      }
+
+      .empty-text {
+        font-size: 1.1em;
+      }
+
+      /* 투명도 체크보드 배경 */
+      .transparency-bg {
+        background-image: linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+          linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #f0f0f0 75%),
+          linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      }
+
+      /* 모바일 반응형 */
+      @media (max-width: 768px) {
+        .header h1 {
+          font-size: 2em;
+        }
+
+        .header {
+          padding: 15px;
+        }
+
+        .main-container,
+        .main-container.upload-only {
+          grid-template-columns: 1fr;
+          gap: 15px;
+          padding: 0 15px 15px;
+          max-height: none;
+          justify-items: stretch;
+        }
+
+        .left-panel,
+        .right-panel {
+          padding: 15px;
+          min-height: 250px;
+        }
+
+        .upload-area {
+          padding: 30px 12px;
+          min-height: 120px;
+        }
+
+        .upload-icon {
+          font-size: 2.2em;
+        }
+
+        .upload-text {
+          font-size: 1em;
+        }
+
+        .action-buttons {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .btn {
+          width: 100%;
+          max-width: 200px;
+        }
+
+        .image-display {
+          max-height: 40vh;
+        }
+
+        .processing-status-container {
+          max-width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>🫥 🖼️ ✂️ 🔥 👨🏻‍💻 AICLUDE EdgeHD</h1>
+      <div class="mode-tabs">
+        <div class="mode-tab active" onclick="switchMode('image')">
+          🖼️ 이미지 처리
+        </div>
+        <div class="mode-tab" onclick="switchMode('video')">🎬 비디오 처리</div>
+      </div>
+    </div>
+
+    <div class="main-container" id="mainContainer">
+      <!-- 좌측 패널 -->
+      <div class="left-panel">
+        <!-- 이미지 모드 -->
+        <div class="image-mode" id="imageMode">
+          <!-- 업로드 영역 -->
+          <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📸</div>
+            <div class="upload-text">클릭하거나 이미지를 드래그해주세요</div>
+            <div class="upload-subtext">
+              PNG, JPG, JPEG, GIF, BMP, WEBP (최대 16MB)
+            </div>
+          </div>
+        </div>
+
+        <!-- 비디오 모드 -->
+        <div class="video-mode" id="videoMode">
+          <!-- 비디오 업로드 영역 -->
+          <div class="video-upload-area" id="videoUploadArea">
+            <div class="upload-icon">🎬</div>
+            <div class="upload-text">클릭하거나 비디오를 드래그해주세요</div>
+            <div class="upload-subtext">MP4, AVI, MOV, MKV (최대 100MB)</div>
+          </div>
+        </div>
+
+        <!-- 이미지 표시 영역 -->
+        <div class="image-display-area" id="leftImageArea">
+          <div class="image-container">
+            <img id="leftImage" class="image-display" alt="현재 이미지" />
+          </div>
+          <div class="image-label" id="leftImageLabel">업로드된 이미지</div>
+          <div class="action-buttons" id="leftActionButtons">
+            <button class="btn upscale-2x" onclick="processImage('upscale', 2)">
+              🔍 2x 업스케일
+            </button>
+            <button class="btn upscale-4x" onclick="processImage('upscale', 4)">
+              🔍 4x 업스케일
+            </button>
+            <button
+              class="btn background-remove"
+              onclick="processImage('background')"
+            >
+              🫥 배경 제거
+            </button>
+          </div>
+        </div>
+
+        <!-- 비디오 표시 영역 -->
+        <div class="video-display-area" id="leftVideoArea">
+          <div class="video-container">
+            <video
+              id="leftVideo"
+              class="video-display"
+              controls
+              alt="업로드된 비디오"
+            >
+              브라우저가 비디오 재생을 지원하지 않습니다.
+            </video>
+          </div>
+
+          <div class="image-label" id="leftVideoLabel">업로드된 비디오</div>
+
+          <!-- 비디오 정보 카드들 (가로 배치) -->
+          <div class="video-info-container">
+            <!-- 원본 비디오 정보 -->
+            <div class="video-info-card">
+              <div class="video-info-title">📹 원본 비디오</div>
+              <div class="video-info-item">
+                <span class="video-info-label">파일 포맷:</span>
+                <span class="video-info-value" id="videoFormat">-</span>
+              </div>
+              <div class="video-info-item">
+                <span class="video-info-label">해상도:</span>
+                <span class="video-info-value" id="videoResolution">-</span>
+              </div>
+              <div class="video-info-item">
+                <span class="video-info-label">프레임율:</span>
+                <span class="video-info-value" id="videoFPS">-</span>
+              </div>
+              <div class="video-info-item">
+                <span class="video-info-label">총 프레임:</span>
+                <span class="video-info-value" id="videoTotalFrames">-</span>
+              </div>
+            </div>
+
+            <!-- 처리될 비디오 정보 -->
+            <div class="video-info-card">
+              <div class="video-info-title">🎬 처리될 비디오</div>
+              <div class="video-info-item">
+                <span class="video-info-label">변경 해상도:</span>
+                <span class="video-info-value" id="processedResolution"
+                  >원본과 동일</span
+                >
+              </div>
+              <div class="video-info-item">
+                <span class="video-info-label">배경 제거:</span>
+                <span class="video-info-value" id="backgroundRemoval"
+                  >적용 예정</span
+                >
+              </div>
+              <div class="video-info-item">
+                <span class="video-info-label">업스케일:</span>
+                <span class="video-info-value" id="upscaleInfo">적용 예정</span>
+              </div>
+              <div class="video-info-item">
+                <span class="video-info-label">출력 포맷:</span>
+                <span class="video-info-value">MP4 (H.264)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="action-buttons" id="leftVideoActionButtons">
+            <button
+              class="btn background-remove"
+              onclick="showBackgroundColorPopup('remove_bg')"
+            >
+              🫥 배경 제거
+            </button>
+            <button
+              class="btn upscale-2x"
+              onclick="startVideoProcessing('upscale_2x')"
+            >
+              🔍 2x 업스케일
+            </button>
+            <button
+              class="btn upscale-4x"
+              onclick="startVideoProcessing('upscale_4x')"
+            >
+              🔍 4x 업스케일
+            </button>
+            <button
+              class="btn"
+              onclick="showBackgroundColorPopup('both_2x')"
+              style="
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+              "
+            >
+              🎬 배경제거 + 2x
+            </button>
+            <button
+              class="btn"
+              onclick="showBackgroundColorPopup('both_4x')"
+              style="
+                background: linear-gradient(135deg, #a55eea 0%, #8b2ac7 100%);
+              "
+            >
+              🎬 배경제거 + 4x
+            </button>
+          </div>
+        </div>
+
+        <input type="file" id="fileInput" accept="image/*" />
+      </div>
+
+      <!-- 우측 패널 -->
+      <div class="right-panel" id="rightPanel">
+        <!-- 빈 상태 -->
+        <div class="empty-state" id="emptyState">
+          <div class="empty-icon" id="emptyIcon">🖼️</div>
+          <div class="empty-text" id="emptyText">
+            이미지를 처리하면<br />결과가 여기에 표시됩니다
+          </div>
+        </div>
+
+        <!-- 결과 표시 영역 -->
+        <div class="image-display-area" id="rightImageArea">
+          <div class="image-container">
+            <img id="rightImage" class="image-display" alt="처리 결과" />
+          </div>
+          <div class="image-label" id="rightImageLabel">처리 결과</div>
+          <div class="action-buttons" id="rightActionButtons">
+            <button class="btn download" id="downloadBtn">🔽 다운로드</button>
+            <button
+              class="btn upscale-2x"
+              onclick="continueProcessing('upscale', 2)"
+            >
+              🔍 2x 업스케일
+            </button>
+            <button
+              class="btn upscale-4x"
+              onclick="continueProcessing('upscale', 4)"
+            >
+              🔍 4x 업스케일
+            </button>
+            <button
+              class="btn background-remove"
+              onclick="continueProcessing('background')"
+            >
+              🫥 배경 제거
+            </button>
+          </div>
+        </div>
+
+        <!-- 비디오 처리 상태 표시 영역 -->
+        <div class="video-status-area" id="videoStatusArea">
+          <!-- 처리 메시지 (패널에 직접 표시) -->
+          <div
+            class="processing-message"
+            id="processingMessage"
+            style="display: block"
+          >
+            <div class="processing-main-message" id="processingMainMessage">
+              🤖 AI가 열심히 작업하고 있습니다!
+            </div>
+            <div class="processing-tip-message" id="processingTipMessage">
+              잠시만 기다려주세요 ✨
+            </div>
+          </div>
+
+          <!-- 비디오 완료 결과 -->
+          <div
+            class="video-result-section"
+            id="videoResultSection"
+            style="display: none"
+          >
+            <div class="result-title">🎉 비디오 처리 완료!</div>
+            <div class="action-buttons">
+              <button class="btn download" id="videoDownloadBtn">
+                🔽 비디오 다운로드
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 배경 색상 선택 팝업 -->
+    <div class="background-color-popup" id="backgroundColorPopup">
+      <div class="popup-content">
+        <div class="popup-header">
+          <div class="popup-title">🎨 배경 색상 선택</div>
+          <button class="close-btn" onclick="hideBackgroundColorPopup()">
+            ×
+          </button>
+        </div>
+
+        <div class="background-color-section">
+          <div class="color-section-title">사전 정의 색상</div>
+          <div class="preset-colors">
+            <button
+              class="color-btn active"
+              data-color="#FFFFFF"
+              style="background: #ffffff; border: 3px solid #ddd"
+              title="흰색"
+            >
+              ⚪
+            </button>
+            <button
+              class="color-btn"
+              data-color="#00FF00"
+              style="background: #00ff00"
+              title="초록 (크로마키)"
+            >
+              🟢
+            </button>
+            <button
+              class="color-btn"
+              data-color="#0000FF"
+              style="background: #0000ff"
+              title="파랑 (크로마키)"
+            >
+              🔵
+            </button>
+            <button
+              class="color-btn"
+              data-color="#000000"
+              style="background: #000000"
+              title="검정"
+            >
+              ⚫
+            </button>
+            <button
+              class="color-btn"
+              data-color="#FF0000"
+              style="background: #ff0000"
+              title="빨강"
+            >
+              🔴
+            </button>
+            <button
+              class="color-btn"
+              data-color="#FFFF00"
+              style="background: #ffff00"
+              title="노랑"
+            >
+              🟡
+            </button>
+            <button
+              class="color-btn"
+              data-color="#FF00FF"
+              style="background: #ff00ff"
+              title="자주"
+            >
+              🟣
+            </button>
+          </div>
+
+          <div class="custom-color-section">
+            <label for="popupCustomColorPicker">커스텀 색상:</label>
+            <input
+              type="color"
+              id="popupCustomColorPicker"
+              class="custom-color-picker"
+              value="#FFFFFF"
+            />
+          </div>
+        </div>
+
+        <div class="popup-actions">
+          <button class="popup-btn cancel" onclick="hideBackgroundColorPopup()">
+            취소
+          </button>
+          <button class="popup-btn" onclick="confirmBackgroundColor()">
+            확인하고 처리 시작
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 파일 입력 요소들 -->
+    <input type="file" id="fileInput" accept="image/*" />
+    <input type="file" id="videoFileInput" accept="video/*" />
+
+    <!-- 전역 컨트롤 -->
+    <div style="position: fixed; top: 20px; right: 20px; z-index: 1000">
+      <button class="btn reset" onclick="resetApplication()">
+        🔄 다시 시작
+      </button>
+    </div>
+
+    <!-- 메시지 컨테이너 -->
+    <div class="message-container" id="messageContainer"></div>
+
+    <script>
+      // 백엔드로부터 전달받은 데이터
+      // Jinja2 템플릿 구문을 안전하게 처리
+      let workId = "";
+      let workData = null;
+
+      // 서버에서 전달된 데이터가 있다면 설정
+      try {
+        const serverWorkId = document.querySelector('meta[name="work-id"]');
+        const serverWorkData = document.querySelector('meta[name="work-data"]');
+        if (serverWorkId) workId = serverWorkId.content;
+        if (serverWorkData) workData = JSON.parse(serverWorkData.content);
+      } catch (e) {
+        console.log("서버 데이터 파싱 실패:", e);
+      }
+
+      // DOM 요소들
+      const fileInput = document.getElementById("fileInput");
+      const videoFileInput = document.getElementById("videoFileInput");
+      const uploadArea = document.getElementById("uploadArea");
+      const videoUploadArea = document.getElementById("videoUploadArea");
+      const imageMode = document.getElementById("imageMode");
+      const videoMode = document.getElementById("videoMode");
+      const videoOptions = document.getElementById("videoOptions");
+      const mainContainer = document.getElementById("mainContainer");
+      const rightPanel = document.getElementById("rightPanel");
+      const leftImageArea = document.getElementById("leftImageArea");
+      const rightImageArea = document.getElementById("rightImageArea");
+      const videoStatusArea = document.getElementById("videoStatusArea");
+      const leftImage = document.getElementById("leftImage");
+      const rightImage = document.getElementById("rightImage");
+      const leftImageLabel = document.getElementById("leftImageLabel");
+      const rightImageLabel = document.getElementById("rightImageLabel");
+      const leftActionButtons = document.getElementById("leftActionButtons");
+      const rightActionButtons = document.getElementById("rightActionButtons");
+      const emptyState = document.getElementById("emptyState");
+      const messageContainer = document.getElementById("messageContainer");
+      const downloadBtn = document.getElementById("downloadBtn");
+
+      // 비디오 관련 DOM 요소들
+      const leftVideoArea = document.getElementById("leftVideoArea");
+      const leftVideo = document.getElementById("leftVideo");
+      const leftVideoLabel = document.getElementById("leftVideoLabel");
+      const leftVideoActionButtons = document.getElementById(
+        "leftVideoActionButtons"
+      );
+
+      const videoResolution = document.getElementById("videoResolution");
+      const videoFPS = document.getElementById("videoFPS");
+      const videoTotalFrames = document.getElementById("videoTotalFrames");
+      const processingMessage = document.getElementById("processingMessage");
+      const processingMainMessage = document.getElementById(
+        "processingMainMessage"
+      );
+      const processingTipMessage = document.getElementById(
+        "processingTipMessage"
+      );
+      const videoResultSection = document.getElementById("videoResultSection");
+      const videoDownloadBtn = document.getElementById("videoDownloadBtn");
+
+      // 배경 색상 팝업 관련 요소들
+      const backgroundColorPopup = document.getElementById(
+        "backgroundColorPopup"
+      );
+      const popupCustomColorPicker = document.getElementById(
+        "popupCustomColorPicker"
+      );
+
+      // 프레임 카운터와 시간 표시 요소들 (없으면 null)
+      const currentFrameNumber = document.getElementById("currentFrameNumber");
+      const remainingTime = document.getElementById("remainingTime");
+
+      // 전역 변수
+      let currentImageFile = null;
+      let currentVideoFile = null;
+      let currentDownloadUrl = null;
+      let isTransparentImage = false;
+      let currentMode = "image";
+      let videoProcessingData = null;
+      let messageInterval = null;
+      let processingStartTime = null;
+      let selectedBackgroundColor = "#FFFFFF"; // 기본 배경색
+      let pendingProcessingMode = null; // 팝업에서 선택된 처리 모드
+
+      // 실제 프레임 처리 시작 시간 (window 객체에 저장)
+      window.actualProcessingStartTime = null;
+
+      // 재미있는 메시지들
+      const funMessages = [
+        {
+          msg: "🤖 AI가 각 프레임을 꼼꼼히 분석하고 있어요!",
+          tip: "높은 품질을 위해서는 시간이 조금 필요해요 ✨",
+        },
+        {
+          msg: "🎨 마법같은 배경 제거가 진행 중이에요!",
+          tip: "곧 놀라운 결과를 보실 수 있을 거예요 🎭",
+        },
+        {
+          msg: "🔍 이미지를 더 선명하게 만들고 있어요!",
+          tip: "업스케일링은 픽셀 하나하나를 정교하게 처리해요 🎯",
+        },
+        {
+          msg: "⚡ GPU가 열심히 계산하고 있어요!",
+          tip: "AI 모델이 복잡한 연산을 수행 중이에요 🧠",
+        },
+        {
+          msg: "🎬 영화 같은 품질로 변환 중이에요!",
+          tip: "프로페셔널한 결과물을 만들어 드릴게요 🎪",
+        },
+        {
+          msg: "🚀 거의 다 왔어요! 조금만 더 기다려 주세요!",
+          tip: "마지막 마무리 작업이 진행 중이에요 ⏰",
+        },
+        {
+          msg: "🌟 각 프레임에 특별한 마법을 걸고 있어요!",
+          tip: "AI가 디테일까지 놓치지 않고 처리해요 🔬",
+        },
+        {
+          msg: "🎭 배경과 객체를 정밀하게 구분하고 있어요!",
+          tip: "수천 번의 학습으로 완성된 AI 기술이에요 📚",
+        },
+        {
+          msg: "💎 다이아몬드처럼 투명하고 깔끔하게!",
+          tip: "완벽한 투명도 처리를 위해 노력하고 있어요 💍",
+        },
+        {
+          msg: "🎪 서커스단의 곡예사처럼 정교하게!",
+          tip: "균형잡힌 처리로 자연스러운 결과를 만들어요 🤹",
+        },
+      ];
+
+      const processingTips = [
+        "💡 팁: 해상도가 높을수록 더 오래 걸리지만 품질도 좋아져요!",
+        "⚡ 팁: GPU 사용 시 CPU 대비 5-10배 빠른 처리가 가능해요!",
+        "🎯 팁: 배경이 복잡할수록 AI가 더 열심히 분석해요!",
+        "🌈 팁: 다양한 색상이 있는 영상일수록 처리 시간이 늘어날 수 있어요!",
+        "📱 팁: 모바일에서 촬영한 영상도 완벽하게 처리 가능해요!",
+        "🎨 팁: 애니메이션이나 그래픽 영상도 지원해요!",
+        "⭐ 팁: 인물 영상에서 특히 뛰어난 성능을 보여줍니다!",
+        "🔥 팁: 실시간이 아닌 고품질 처리를 위해 시간을 투자하고 있어요!",
+      ];
+
+      // UUID 생성 함수
+      function generateUUID() {
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
+          /[xy]/g,
+          function (c) {
+            const r = (Math.random() * 16) | 0;
+            const v = c == "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+          }
+        );
+      }
+
+      // 모드별 빈 상태 업데이트
+      function updateEmptyState() {
+        const emptyIcon = document.getElementById("emptyIcon");
+        const emptyText = document.getElementById("emptyText");
+
+        if (currentMode === "video") {
+          emptyIcon.textContent = "🎬";
+          emptyText.innerHTML =
+            "비디오를 처리하면<br />결과가 여기에 표시됩니다";
+        } else {
+          emptyIcon.textContent = "🖼️";
+          emptyText.innerHTML =
+            "이미지를 처리하면<br />결과가 여기에 표시됩니다";
+        }
+      }
+
+      // 모드 전환 함수
+      function switchMode(mode) {
+        currentMode = mode;
+        const tabs = document.querySelectorAll(".mode-tab");
+        tabs.forEach((tab) => tab.classList.remove("active"));
+
+        if (mode === "image") {
+          tabs[0].classList.add("active");
+          imageMode.classList.remove("hidden");
+          videoMode.classList.remove("active");
+          initializeApp();
+        } else if (mode === "video") {
+          tabs[1].classList.add("active");
+          imageMode.classList.add("hidden");
+          videoMode.classList.add("active");
+          initializeVideoMode();
+        }
+
+        updateEmptyState();
+      }
+
+      // 이미지 모드 초기화
+      function initializeApp() {
+        if (currentMode !== "image") return;
+
+        uploadArea.style.display = "flex";
+        leftImageArea.classList.remove("visible");
+        leftVideoArea.classList.remove("visible"); // 비디오 영역 숨기기
+        rightPanel.classList.remove("visible");
+        videoStatusArea.classList.remove("visible"); // 비디오 상태 영역 숨기기
+        mainContainer.classList.add("upload-only");
+        emptyState.classList.remove("hide");
+        rightImageArea.classList.remove("visible");
+        messageContainer.innerHTML = "";
+        currentImageFile = null;
+        currentDownloadUrl = null;
+        isTransparentImage = false;
+      }
+
+      // 비디오 모드 초기화
+      function initializeVideoMode() {
+        videoUploadArea.style.display = "flex";
+        leftVideoArea.classList.remove("visible");
+        rightPanel.classList.remove("visible");
+        videoStatusArea.classList.remove("visible");
+        mainContainer.classList.add("upload-only");
+        emptyState.classList.remove("hide");
+        currentVideoFile = null;
+        currentDownloadUrl = null;
+
+        // 비디오 처리 관련 정리
+        stopFileCountPolling();
+        if (messageInterval) {
+          clearInterval(messageInterval);
+          messageInterval = null;
+        }
+
+        // 결과 영역 숨기기
+        if (videoResultSection) {
+          videoResultSection.style.display = "none";
+        }
+
+        // 처리 메시지 숨기기
+        if (processingMessage) {
+          processingMessage.style.display = "none";
+        }
+      }
+
+      // 업스케일 옵션 토글 (사용하지 않음 - 호환성을 위해 유지)
+      function toggleScaleOptions() {
+        // 더 이상 사용하지 않음 - 새로운 UI에서는 버튼으로 직접 선택
+      }
+
+      // 배경 색상 팝업 표시
+      function showBackgroundColorPopup(mode) {
+        console.log("🎨 배경 색상 팝업 표시, mode:", mode);
+        pendingProcessingMode = mode;
+        backgroundColorPopup.style.display = "flex";
+
+        // 팝업 내 색상 버튼 이벤트 설정
+        initializePopupColorSelection();
+      }
+
+      // 배경 색상 팝업 숨기기
+      function hideBackgroundColorPopup() {
+        console.log("🎨 배경 색상 팝업 숨기기");
+        backgroundColorPopup.style.display = "none";
+        pendingProcessingMode = null;
+      }
+
+      // 배경 색상 확인 후 처리 시작
+      function confirmBackgroundColor() {
+        console.log(
+          "✅ 배경 색상 확인, pendingProcessingMode:",
+          pendingProcessingMode
+        );
+        if (pendingProcessingMode) {
+          // 처리 모드를 임시 변수에 저장
+          const modeToProcess = pendingProcessingMode;
+          hideBackgroundColorPopup(); // 이제 pendingProcessingMode가 null이 됨
+          startVideoProcessing(modeToProcess); // 하지만 임시 변수 사용
+        } else {
+          console.error("❌ pendingProcessingMode가 없습니다!");
+        }
+      }
+
+      // 팝업 내 색상 선택 초기화
+      function initializePopupColorSelection() {
+        const popupColorButtons =
+          backgroundColorPopup.querySelectorAll(".color-btn");
+
+        // 기존 이벤트 제거 후 새로 설정
+        popupColorButtons.forEach((btn) => {
+          btn.replaceWith(btn.cloneNode(true));
+        });
+
+        // 새로운 버튼들에 이벤트 설정
+        const newPopupColorButtons =
+          backgroundColorPopup.querySelectorAll(".color-btn");
+        newPopupColorButtons.forEach((btn) => {
+          btn.addEventListener("click", function () {
+            newPopupColorButtons.forEach((b) => b.classList.remove("active"));
+            this.classList.add("active");
+            selectedBackgroundColor = this.getAttribute("data-color");
+            console.log("팝업에서 배경 색상 선택:", selectedBackgroundColor);
+          });
+        });
+
+        // 커스텀 색상 피커
+        if (popupCustomColorPicker) {
+          popupCustomColorPicker.addEventListener("change", function () {
+            newPopupColorButtons.forEach((b) => b.classList.remove("active"));
+            selectedBackgroundColor = this.value;
+            console.log(
+              "팝업에서 커스텀 배경 색상 선택:",
+              selectedBackgroundColor
+            );
+          });
+        }
+      }
+
+      // 처리 메시지 업데이트 (패널에 직접 표시)
+      function updateProcessingMessage() {
+        if (!processingMainMessage || !processingTipMessage) return;
+
+        const randomMessage =
+          funMessages[Math.floor(Math.random() * funMessages.length)];
+        const randomTip =
+          processingTips[Math.floor(Math.random() * processingTips.length)];
+
+        processingMainMessage.textContent = randomMessage.msg;
+        processingTipMessage.textContent =
+          Math.random() > 0.5 ? randomMessage.tip : randomTip;
+      }
+
+      // 시간 포맷팅
+      function formatTime(seconds) {
+        if (seconds < 60) return `${Math.round(seconds)}초`;
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+        return `${minutes}분 ${remainingSeconds}초`;
+      }
+
+      // 비디오 정보 표시 (서버에서 받은 정확한 데이터 사용)
+      function displayVideoInfo(data) {
+        // 서버에서 받은 정확한 비디오 데이터로 업데이트
+        videoProcessingData = {
+          width: data.width,
+          height: data.height,
+          fps: data.fps,
+          original_frames: data.original_frames,
+          duration: data.duration || leftVideo.duration,
+        };
+
+        // 원본 비디오 정보 업데이트 (서버 데이터 사용)
+        const videoResolutionEl = document.getElementById("videoResolution");
+        if (videoResolutionEl) {
+          videoResolutionEl.textContent = `${data.width}x${data.height}`;
+        }
+
+        const videoFPSEl = document.getElementById("videoFPS");
+        if (videoFPSEl) {
+          videoFPSEl.textContent = `${data.fps.toFixed(1)} FPS`;
+        }
+
+        const videoTotalFramesEl = document.getElementById("videoTotalFrames");
+        if (videoTotalFramesEl) {
+          videoTotalFramesEl.textContent = `${data.original_frames}개`;
+        }
+
+        console.log("비디오 정보 업데이트 완료:", videoProcessingData);
+      }
+
+      // 처리될 비디오 정보 업데이트
+      function updateProcessingInfo(removeBg, upscale, scaleRatio) {
+        if (!videoProcessingData) return;
+
+        // 변경될 해상도 계산
+        let newResolution = "원본과 동일";
+        if (upscale) {
+          const newWidth = videoProcessingData.width * scaleRatio;
+          const newHeight = videoProcessingData.height * scaleRatio;
+          newResolution = `${newWidth}x${newHeight} (${scaleRatio}x)`;
+        }
+        const processedResolutionEl = document.getElementById(
+          "processedResolution"
+        );
+        if (processedResolutionEl) {
+          processedResolutionEl.textContent = newResolution;
+        }
+
+        // 배경 제거 여부
+        const backgroundRemovalEl =
+          document.getElementById("backgroundRemoval");
+        if (backgroundRemovalEl) {
+          backgroundRemovalEl.textContent = removeBg
+            ? "✅ 적용됨"
+            : "❌ 적용 안함";
+        }
+
+        // 업스케일 정보
+        let upscaleText = "❌ 적용 안함";
+        if (upscale) {
+          upscaleText = `✅ ${scaleRatio}x 업스케일`;
+        }
+        const upscaleInfoEl = document.getElementById("upscaleInfo");
+        if (upscaleInfoEl) {
+          upscaleInfoEl.textContent = upscaleText;
+        }
+      }
+
+      // 현재 프레임 업데이트 (실제 파일 수 기반)
+      function updateCurrentFrame(processedCount, totalFrames) {
+        // 현재 처리된 프레임 수와 비율 표시
+        const progressPercent =
+          totalFrames > 0 ? (processedCount / totalFrames) * 100 : 0;
+
+        // 첫 번째 프레임 처리 시 실제 처리 시작 시간 기록
+        if (processedCount === 1 && !window.actualProcessingStartTime) {
+          window.actualProcessingStartTime = Date.now();
+          console.log("실제 프레임 처리 시작 시간 기록");
+        }
+
+        if (window.actualProcessingStartTime && processedCount > 0) {
+          const elapsed =
+            (Date.now() - window.actualProcessingStartTime) / 1000;
+          const avgTimePerFrame = elapsed / processedCount;
+          const remainingFrames = totalFrames - processedCount;
+          const estimatedRemaining = remainingFrames * avgTimePerFrame;
+
+          console.log(
+            `🎬 실시간 진행률: ${processedCount}/${totalFrames} (${progressPercent.toFixed(
+              1
+            )}%) - 경과: ${elapsed.toFixed(
+              1
+            )}초, 평균: ${avgTimePerFrame.toFixed(
+              2
+            )}초/프레임, 예상 남은 시간: ${estimatedRemaining.toFixed(1)}초`
+          );
+        }
+      }
+
+      // 비디오 처리 상태 표시
+      function showVideoProcessingStatus() {
+        console.log("🎬 showVideoProcessingStatus() 호출됨");
+
+        rightPanel.classList.add("visible");
+        emptyState.classList.add("hide");
+        rightImageArea.classList.remove("visible");
+        videoStatusArea.classList.add("visible");
+        mainContainer.classList.remove("upload-only");
+
+        console.log(
+          "📺 videoStatusArea 표시 상태:",
+          videoStatusArea.classList.contains("visible")
+        );
+        console.log("📋 processingMessage 요소:", processingMessage);
+
+        // 처리 메시지 주기적 업데이트 시작
+        updateProcessingMessage();
+        messageInterval = setInterval(updateProcessingMessage, 8000); // 8초마다 메시지 변경
+
+        // 처리 시작 시간 초기화
+        processingStartTime = Date.now();
+        window.actualProcessingStartTime = null; // 실제 프레임 처리 시작 시간 초기화
+
+        // 처리 메시지 표시
+        if (processingMessage) {
+          processingMessage.style.display = "block";
+          console.log("💬 processingMessage 표시됨");
+        } else {
+          console.error("❌ processingMessage 요소를 찾을 수 없음");
+        }
+
+        // 결과 섹션 숨기기
+        if (videoResultSection) {
+          videoResultSection.style.display = "none";
+        }
+
+        console.log("✅ 비디오 처리 상태 표시 완료");
+      }
+
+      // 비디오 처리 완료 시 정리
+      function hideVideoProcessingStatus() {
+        console.log("🔧 hideVideoProcessingStatus 시작");
+
+        if (messageInterval) {
+          clearInterval(messageInterval);
+          messageInterval = null;
+          console.log("📴 메시지 인터벌 정리됨");
+        }
+
+        // 처리 메시지 숨기기
+        if (processingMessage) {
+          processingMessage.style.display = "none";
+          console.log("📴 처리 메시지 숨김");
+        } else {
+          console.error("❌ processingMessage 요소를 찾을 수 없음");
+        }
+
+        // 결과 영역 표시
+        if (videoResultSection) {
+          videoResultSection.style.display = "block";
+          console.log("📺 비디오 결과 섹션 표시됨");
+        } else {
+          console.error("❌ videoResultSection 요소를 찾을 수 없음");
+        }
+
+        console.log("✅ hideVideoProcessingStatus 완료");
+      }
+
+      // 새로운 비디오 처리 시작 함수
+      function startVideoProcessing(mode) {
+        console.log("🎬 startVideoProcessing 호출됨, mode:", mode);
+
+        if (!currentVideoFile) {
+          showMessage("비디오 파일을 먼저 선택해주세요.", "error");
+          return;
+        }
+
+        let removeBg = false;
+        let upscale = false;
+        let scaleRatio = 2;
+
+        // 모드에 따른 처리 옵션 설정
+        console.log("🔧 처리 모드 분석:", mode, typeof mode);
+        switch (mode) {
+          case "remove_bg":
+            removeBg = true;
+            break;
+          case "upscale_2x":
+            upscale = true;
+            scaleRatio = 2;
+            break;
+          case "upscale_4x":
+            upscale = true;
+            scaleRatio = 4;
+            break;
+          case "both_2x":
+            removeBg = true;
+            upscale = true;
+            scaleRatio = 2;
+            break;
+          case "both_4x":
+            removeBg = true;
+            upscale = true;
+            scaleRatio = 4;
+            break;
+          default:
+            console.error(
+              "❌ 알 수 없는 처리 모드:",
+              mode,
+              "타입:",
+              typeof mode
+            );
+            showMessage(`잘못된 처리 모드입니다: ${mode}`, "error");
+            return;
+        }
+
+        // 처리 시작 전에 처리될 비디오 정보 업데이트
+        updateProcessingInfo(removeBg, upscale, scaleRatio);
+
+        // 처리 옵션을 전역 변수에 저장 (나중에 사용)
+        window.currentProcessingOptions = {
+          removeBg: removeBg,
+          upscale: upscale,
+          scaleRatio: scaleRatio,
+        };
+
+        processVideoWithOptions(removeBg, upscale, scaleRatio);
+      }
+
+      // 비디오 처리 함수 (옵션 포함)
+      function processVideoWithOptions(removeBg, upscale, scaleRatio) {
+        console.log("🎬 비디오 처리 시작 - 옵션:", {
+          removeBg,
+          upscale,
+          scaleRatio,
+          backgroundColorValue: selectedBackgroundColor,
+          workIdValue: workId,
+          currentVideoFileExists: !!currentVideoFile,
+        });
+
+        if (!currentVideoFile) {
+          console.error("❌ currentVideoFile이 없습니다!");
+          showMessage("비디오 파일이 선택되지 않았습니다.", "error");
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", currentVideoFile);
+        formData.append("remove_bg", removeBg);
+        formData.append("upscale", upscale);
+        formData.append("scale_factor", scaleRatio);
+        formData.append("background_color", selectedBackgroundColor); // 배경 색상 추가
+        // 프론트엔드에서 생성한 work_id 전달
+        if (workId) {
+          formData.append("work_id", workId);
+        }
+
+        console.log("📤 FormData 준비 완료:", {
+          fileSize: currentVideoFile.size,
+          fileName: currentVideoFile.name,
+          backgroundColor: selectedBackgroundColor,
+          workId: workId,
+        });
+
+        // 비디오 처리 상태 표시 시작
+        showVideoProcessingStatus();
+
+        // 처리 버튼들 비활성화
+        const actionButtons = leftVideoActionButtons.querySelectorAll(".btn");
+        actionButtons.forEach((btn) => (btn.disabled = true));
+
+        fetch("/process_video", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // 처리 버튼들 재활성화
+            actionButtons.forEach((btn) => (btn.disabled = false));
+
+            if (data.success) {
+              // 서버에서 받은 정확한 비디오 정보 표시
+              displayVideoInfo(data);
+
+              // 처리 옵션에 따른 정보 다시 업데이트 (정확한 데이터 기반)
+              if (window.currentProcessingOptions) {
+                updateProcessingInfo(
+                  window.currentProcessingOptions.removeBg,
+                  window.currentProcessingOptions.upscale,
+                  window.currentProcessingOptions.scaleRatio
+                );
+              }
+
+              // 프로그레스 스트림 연결
+              connectToVideoProgressStream(data.session_id, data);
+
+              // 파일 카운트 폴링 시작 (실제 프레임 처리 추적)
+              startFileCountPolling(data.session_id);
+            } else {
+              showMessage(
+                data.error || "비디오 처리 중 오류가 발생했습니다.",
+                "error"
+              );
+              stopFileCountPolling();
+              if (messageInterval) {
+                clearInterval(messageInterval);
+                messageInterval = null;
+              }
+            }
+          })
+          .catch((error) => {
+            // 처리 버튼들 재활성화
+            actionButtons.forEach((btn) => (btn.disabled = false));
+            console.error("Error:", error);
+            showMessage("네트워크 오류가 발생했습니다.", "error");
+            stopFileCountPolling();
+            if (messageInterval) {
+              clearInterval(messageInterval);
+              messageInterval = null;
+            }
+          });
+      }
+
+      // 이벤트 리스너 설정
+      uploadArea.addEventListener("click", () => fileInput.click());
+
+      uploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        uploadArea.classList.add("dragover");
+      });
+
+      uploadArea.addEventListener("dragleave", () => {
+        uploadArea.classList.remove("dragover");
+      });
+
+      uploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFileUpload(files[0]);
+        }
+      });
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          handleFileUpload(e.target.files[0]);
+        }
+      });
+
+      // 파일 업로드 처리
+      function handleFileUpload(file) {
+        // 파일 유효성 검사
+        if (!file.type.startsWith("image/")) {
+          showMessage("이미지 파일만 업로드 가능합니다.", "error");
+          return;
+        }
+
+        if (file.size > 16 * 1024 * 1024) {
+          showMessage("파일 크기는 16MB 이하여야 합니다.", "error");
+          return;
+        }
+
+        // 업로드 즉시 UUID 생성하고 URL 변경
+        const newWorkId = generateUUID();
+        workId = newWorkId;
+        window.history.pushState(
+          { workId: newWorkId },
+          "",
+          `/work/${newWorkId}`
+        );
+        console.log(`📍 이미지 업로드 시 URL 변경: /work/${newWorkId}`);
+
+        currentImageFile = file;
+
+        // 이미지 표시
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          leftImage.src = e.target.result;
+
+          // 투명도 확인
+          if (file.type === "image/png") {
+            checkImageTransparency(e.target.result);
+          }
+
+          // UI 전환
+          uploadArea.style.display = "none";
+          leftImageArea.classList.add("visible");
+          rightPanel.classList.add("visible");
+          mainContainer.classList.remove("upload-only");
+
+          showMessage(
+            "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
+            "success"
+          );
+        };
+        reader.readAsDataURL(file);
+      }
+
+      // 비디오 이벤트 리스너 설정
+      videoUploadArea.addEventListener("click", () => videoFileInput.click());
+
+      videoUploadArea.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        videoUploadArea.classList.add("dragover");
+      });
+
+      videoUploadArea.addEventListener("dragleave", () => {
+        videoUploadArea.classList.remove("dragover");
+      });
+
+      videoUploadArea.addEventListener("drop", (e) => {
+        e.preventDefault();
+        videoUploadArea.classList.remove("dragover");
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleVideoUpload(files[0]);
+        }
+      });
+
+      videoFileInput.addEventListener("change", (e) => {
+        if (e.target.files.length > 0) {
+          handleVideoUpload(e.target.files[0]);
+        }
+      });
+
+      // 비디오 업로드 처리
+      function handleVideoUpload(file) {
+        // 파일 유효성 검사
+        if (!file.type.startsWith("video/")) {
+          showMessage("비디오 파일만 업로드 가능합니다.", "error");
+          return;
+        }
+
+        if (file.size > 100 * 1024 * 1024) {
+          showMessage("파일 크기는 100MB 이하여야 합니다.", "error");
+          return;
+        }
+
+        // 업로드 즉시 UUID 생성하고 URL 변경
+        const newWorkId = generateUUID();
+        workId = newWorkId;
+        window.history.pushState(
+          { workId: newWorkId },
+          "",
+          `/work/${newWorkId}`
+        );
+        console.log(`📍 비디오 업로드 시 URL 변경: /work/${newWorkId}`);
+
+        currentVideoFile = file;
+
+        // 비디오 파일을 URL로 변환하여 표시
+        const videoURL = URL.createObjectURL(file);
+        leftVideo.src = videoURL;
+
+        // UI 전환
+        videoUploadArea.style.display = "none";
+        leftVideoArea.classList.add("visible");
+        rightPanel.classList.add("visible");
+        mainContainer.classList.remove("upload-only");
+
+        // 우측 패널에 비디오 상태 표시
+        videoStatusArea.classList.add("visible");
+        emptyState.classList.add("hide");
+
+        // 처리 메시지 즉시 표시 (대기 상태)
+        if (processingMessage) {
+          processingMessage.style.display = "block";
+        }
+        if (processingMainMessage) {
+          processingMainMessage.textContent = "🎬 비디오가 업로드되었습니다!";
+        }
+        if (processingTipMessage) {
+          processingTipMessage.textContent = "처리할 작업을 선택해주세요 ✨";
+        }
+
+        // 비디오 메타데이터 로드 시 즉시 원본 정보 표시
+        leftVideo.addEventListener("loadedmetadata", function initVideoData() {
+          // 실제 비디오 데이터로 초기화 (정확한 FPS는 서버에서 받을 예정)
+          videoProcessingData = {
+            width: leftVideo.videoWidth,
+            height: leftVideo.videoHeight,
+            fps: null, // 서버에서 정확한 값을 받을 예정
+            original_frames: null, // 서버에서 정확한 값을 받을 예정
+            duration: leftVideo.duration,
+          };
+
+          // 파일 포맷 정보 표시
+          const fileExtension = file.name.split(".").pop().toUpperCase();
+          const videoFormatEl = document.getElementById("videoFormat");
+          if (videoFormatEl) {
+            videoFormatEl.textContent = fileExtension;
+          }
+
+          // 해상도, FPS, 프레임 정보 표시
+          const videoResolutionEl = document.getElementById("videoResolution");
+          if (videoResolutionEl) {
+            videoResolutionEl.textContent = `${videoProcessingData.width}x${videoProcessingData.height}`;
+          }
+
+          const videoFPSEl = document.getElementById("videoFPS");
+          if (videoFPSEl) {
+            videoFPSEl.textContent = `분석 중...`;
+          }
+
+          const videoTotalFramesEl =
+            document.getElementById("videoTotalFrames");
+          if (videoTotalFramesEl) {
+            videoTotalFramesEl.textContent = `분석 중...`;
+          }
+
+          // 초기 처리 정보 설정 (아무것도 적용 안함)
+          const processedResolutionEl = document.getElementById(
+            "processedResolution"
+          );
+          if (processedResolutionEl) {
+            processedResolutionEl.textContent = "원본과 동일";
+          }
+
+          const backgroundRemovalEl =
+            document.getElementById("backgroundRemoval");
+          if (backgroundRemovalEl) {
+            backgroundRemovalEl.textContent = "적용 예정";
+          }
+
+          const upscaleInfoEl = document.getElementById("upscaleInfo");
+          if (upscaleInfoEl) {
+            upscaleInfoEl.textContent = "적용 예정";
+          }
+
+          // 이 이벤트 리스너 제거
+          leftVideo.removeEventListener("loadedmetadata", initVideoData);
+        });
+
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+        showMessage(
+          `비디오가 업로드되었습니다! (${fileSizeMB}MB) 원하는 처리 옵션을 선택하세요.`,
+          "success"
+        );
+      }
+
+      // 투명도 확인
+      function checkImageTransparency(src) {
+        const img = new Image();
+        img.onload = function () {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+
+          for (let i = 3; i < data.length; i += 4) {
+            if (data[i] < 255) {
+              isTransparentImage = true;
+              if (leftImage.parentElement) {
+                leftImage.parentElement.classList.add("transparency-bg");
+              }
+              break;
+            }
+          }
+        };
+        img.src = src;
+      }
+
+      // 이미지 처리 (좌측에서)
+      function processImage(type, scale = 4) {
+        if (!currentImageFile) {
+          showMessage("먼저 이미지를 업로드해주세요.", "error");
+          return;
+        }
+
+        emptyState.classList.add("hide");
+        rightImageArea.classList.remove("visible");
+
+        const formData = new FormData();
+        formData.append("file", currentImageFile);
+        // 프론트엔드에서 생성한 work_id 전달
+        if (workId) {
+          formData.append("work_id", workId);
+        }
+
+        let endpoint = "/upload";
+        let processingName = "배경 제거";
+
+        if (type === "upscale") {
+          endpoint = "/upscale";
+          formData.append("scale", scale.toString());
+          processingName = `${scale}x 업스케일`;
+        }
+
+        let progressStream = null;
+
+        fetch(endpoint, {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              showMessage(data.error, "error");
+            } else {
+              // 프로그래스 스트림 연결
+              if (data.session_id) {
+                progressStream = connectToProgressStream(data.session_id);
+              }
+
+              // 처리 완료 후 결과 표시
+              setTimeout(() => {
+                rightImage.src = data.download_url;
+                rightImageLabel.textContent = `${processingName} 완료 ✨`;
+                rightImageArea.classList.add("visible");
+
+                // 배경제거 결과인 경우 투명도 배경 적용
+                if (type === "background") {
+                  rightImage.parentElement.classList.add("transparency-bg");
+                  updateRightActionButtons(true);
+                } else {
+                  rightImage.parentElement.classList.remove("transparency-bg");
+                  updateRightActionButtons(false);
+                }
+
+                currentDownloadUrl = data.download_url;
+                setupDownloadButton();
+
+                showMessage(`${processingName}이 완료되었습니다!`, "success");
+              }, 1000);
+            }
+          })
+          .catch((error) => {
+            if (progressStream) {
+              progressStream.close();
+            }
+            showMessage("처리 중 오류가 발생했습니다.", "error");
+            console.error("Error:", error);
+          });
+      }
+
+      // 연속 처리 (우측 결과에서)
+      function continueProcessing(type, scale = 4) {
+        if (!currentDownloadUrl) {
+          showMessage("처리할 이미지가 없습니다.", "error");
+          return;
+        }
+
+        // 현재 결과를 좌측으로 이동
+        fetch(currentDownloadUrl)
+          .then((response) => response.blob())
+          .then((blob) => {
+            const file = new File([blob], `processed_image.png`, {
+              type: "image/png",
+            });
+            currentImageFile = file;
+
+            // 좌측 이미지 업데이트
+            leftImage.src = currentDownloadUrl;
+            leftImageLabel.textContent = "현재 이미지";
+
+            // 투명도 배경 처리
+            if (
+              rightImage.parentElement.classList.contains("transparency-bg")
+            ) {
+              leftImage.parentElement.classList.add("transparency-bg");
+            } else {
+              leftImage.parentElement.classList.remove("transparency-bg");
+            }
+
+            // 새로운 처리 시작
+            processImage(type, scale);
+          })
+          .catch((error) => {
+            showMessage("이미지 로드 중 오류가 발생했습니다.", "error");
+            console.error("Error:", error);
+          });
+      }
+
+      // 우측 액션 버튼 업데이트
+      function updateRightActionButtons(isBackgroundRemoved) {
+        const buttons = rightActionButtons.querySelectorAll(".btn");
+        buttons.forEach((btn) => {
+          if (btn.classList.contains("background-remove")) {
+            btn.style.display = isBackgroundRemoved ? "none" : "inline-block";
+          }
+        });
+      }
+
+      // 다운로드 버튼 설정
+      function setupDownloadButton() {
+        downloadBtn.onclick = () => {
+          if (currentDownloadUrl) {
+            window.open(currentDownloadUrl, "_blank");
+          }
+        };
+      }
+
+      // 프로그레스 스트림 연결 (기존 이미지용)
+      function connectToProgressStream(sessionId) {
+        const eventSource = new EventSource(`/progress/${sessionId}`);
+
+        eventSource.onmessage = function (event) {
+          try {
+            const data = JSON.parse(event.data);
+            console.log(
+              `프로그레스 업데이트: ${data.progress}% - ${data.message}`
+            );
+
+            if (data.progress >= 100) {
+              eventSource.close();
+            }
+          } catch (e) {
+            console.error("Progress parsing error:", e);
+          }
+        };
+
+        eventSource.onerror = function (event) {
+          console.error("Progress stream error:", event);
+          eventSource.close();
+        };
+
+        return eventSource;
+      }
+
+      // 실제 파일 수 확인 폴링 (핵심 기능)
+      let fileCountPollingInterval = null;
+      let currentSessionId = null;
+
+      function startFileCountPolling(sessionId) {
+        currentSessionId = sessionId;
+
+        // 2초마다 실제 파일 수 확인
+        fileCountPollingInterval = setInterval(async () => {
+          try {
+            const response = await fetch(`/video_progress_files/${sessionId}`);
+            if (response.ok) {
+              const data = await response.json();
+
+              console.log(
+                `실제 파일 수 폴링: processed=${data.processed_count}, total=${data.total_frames}`
+              );
+
+              // 실제 파일 수 기반으로 프레임 업데이트
+              updateCurrentFrame(data.processed_count, data.total_frames);
+
+              // 완료 체크 - 처리된 프레임 수가 총 프레임 수에 도달하면 완료
+              if (data.processed_count >= data.total_frames) {
+                console.log(
+                  `🎬 비디오 처리 완료! ${data.processed_count}/${data.total_frames} 프레임 처리됨`
+                );
+                console.log("📊 완료 데이터:", data);
+
+                clearInterval(fileCountPollingInterval);
+                fileCountPollingInterval = null;
+
+                // 처리 완료 처리
+                handleVideoProcessingComplete(data);
+              }
+            }
+          } catch (error) {
+            console.error("파일 수 폴링 오류:", error);
+          }
+        }, 2000); // 2초마다 폴링
+
+        console.log(`파일 수 폴링 시작: session=${sessionId}`);
+      }
+
+      function stopFileCountPolling() {
+        if (fileCountPollingInterval) {
+          clearInterval(fileCountPollingInterval);
+          fileCountPollingInterval = null;
+          console.log("파일 수 폴링 중지");
+        }
+      }
+
+      // 비디오 처리 완료 처리
+      function handleVideoProcessingComplete(data) {
+        console.log("🎉 비디오 처리 완료 처리 시작:", data);
+
+        // 시간 변수 정리
+        processingStartTime = null;
+        window.actualProcessingStartTime = null;
+
+        // 파일 카운트 폴링 중지
+        stopFileCountPolling();
+
+        // UI 완료 처리
+        hideVideoProcessingStatus();
+
+        // 다운로드 URL 설정 (work_id 기반)
+        console.log("🔗 다운로드 URL 설정 시작:");
+        console.log("  - data:", data);
+        console.log(
+          "  - data.download_url:",
+          data ? data.download_url : "data 없음"
+        );
+        console.log("  - workId:", workId);
+
+        if (data && data.download_url) {
+          currentDownloadUrl = data.download_url;
+          console.log("✅ 백엔드에서 받은 URL 사용:", currentDownloadUrl);
+        } else if (workId) {
+          // work_id를 이용해 다운로드 URL 생성
+          currentDownloadUrl = `/download/${workId}`;
+          console.log("🔧 work_id 기반 URL 생성:", currentDownloadUrl);
+        } else {
+          console.error(
+            "❌ 다운로드 URL을 설정할 수 없음 - data.download_url과 workId 모두 없음"
+          );
+        }
+
+        setupVideoDownloadButton();
+
+        // 완료 메시지
+        showMessage("🎉 비디오 처리 완료!", "success");
+      }
+
+      // 비디오 프로그레스 스트림 연결
+      function connectToVideoProgressStream(sessionId, videoData) {
+        const eventSource = new EventSource(`/progress/${sessionId}`);
+
+        eventSource.onmessage = function (event) {
+          try {
+            const data = JSON.parse(event.data);
+
+            console.log(
+              `비디오 프로그레스: ${data.progress}% - ${data.message}`
+            );
+
+            if (data.progress >= 100) {
+              // SSE 완료 신호 - 실제 완료는 파일 카운트 폴링에서 처리
+              console.log(
+                "📡 SSE 스트림에서 완료 신호 받음 - 파일 카운트 폴링이 실제 완료를 처리함"
+              );
+              eventSource.close();
+            }
+          } catch (e) {
+            console.error("Progress parsing error:", e);
+            console.error("Raw event data:", event.data);
+          }
+        };
+
+        eventSource.onerror = function (event) {
+          console.error("Progress stream error:", event);
+          eventSource.close();
+
+          // 오류 시 정리
+          if (messageInterval) {
+            clearInterval(messageInterval);
+            messageInterval = null;
+          }
+        };
+
+        return eventSource;
+      }
+
+      // 비디오 다운로드 버튼 설정
+      function setupVideoDownloadButton() {
+        console.log("🔧 setupVideoDownloadButton 시작");
+        console.log("📋 videoDownloadBtn 요소:", videoDownloadBtn);
+        console.log("📋 currentDownloadUrl:", currentDownloadUrl);
+
+        if (videoDownloadBtn) {
+          videoDownloadBtn.onclick = () => {
+            console.log("🔽 다운로드 버튼 클릭됨, URL:", currentDownloadUrl);
+            if (currentDownloadUrl) {
+              window.open(currentDownloadUrl, "_blank");
+            } else {
+              console.error("❌ 다운로드 URL이 없습니다!");
+            }
+          };
+          console.log("✅ 다운로드 버튼 이벤트 설정 완료");
+        } else {
+          console.error("❌ videoDownloadBtn 요소를 찾을 수 없음!");
+        }
+      }
+
+      // 메시지 표시
+      function showMessage(message, type = "error") {
+        messageContainer.innerHTML = `
+          <div class="${type}-message">
+            ${message}
+          </div>
+        `;
+
+        setTimeout(() => {
+          messageContainer.innerHTML = "";
+        }, 3000);
+      }
+
+      // 애플리케이션 리셋
+      function resetApplication() {
+        // work_id가 있는 경우 서버에 리셋 요청 후 메인 페이지로 이동
+        if (workId && workId.trim() !== "") {
+          // 서버에 세션 리셋 요청
+          fetch(`/reset/${workId}`, {
+            method: "POST",
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                console.log("🧹 서버 세션 정리 완료:", data.cleaned_items);
+                showMessage(
+                  "작업이 초기화되었습니다. 메인 페이지로 이동합니다.",
+                  "success"
+                );
+
+                // 1초 후 메인 페이지로 이동
+                setTimeout(() => {
+                  window.location.href = "/";
+                }, 1000);
+              } else {
+                console.error("세션 리셋 실패:", data.error);
+                // 서버 리셋 실패 시에도 클라이언트 측에서 페이지 이동
+                showMessage("메인 페이지로 이동합니다.", "success");
+                setTimeout(() => {
+                  window.location.href = "/";
+                }, 1000);
+              }
+            })
+            .catch((error) => {
+              console.error("리셋 요청 오류:", error);
+              // 네트워크 오류 시에도 클라이언트 측에서 페이지 이동
+              showMessage("메인 페이지로 이동합니다.", "success");
+              setTimeout(() => {
+                window.location.href = "/";
+              }, 1000);
+            });
+        } else {
+          // work_id가 없는 경우 (메인 페이지에서) 로컬 리셋만 수행
+          performLocalReset();
+        }
+      }
+
+      // 로컬 상태 리셋 (기존 로직)
+      function performLocalReset() {
+        fileInput.value = "";
+        videoFileInput.value = "";
+
+        // 비디오 처리 관련 정리
+        if (messageInterval) {
+          clearInterval(messageInterval);
+          messageInterval = null;
+        }
+
+        // 상태 초기화
+        videoProcessingData = null;
+        processingStartTime = null;
+        currentDownloadUrl = null;
+        currentVideoFile = null;
+        currentImageFile = null;
+        pendingProcessingMode = null;
+
+        // 팝업 닫기
+        if (backgroundColorPopup) {
+          backgroundColorPopup.style.display = "none";
+        }
+
+        // 비디오 URL 정리 (메모리 누수 방지)
+        if (leftVideo && leftVideo.src) {
+          URL.revokeObjectURL(leftVideo.src);
+          leftVideo.src = "";
+        }
+
+        if (currentMode === "image") {
+          initializeApp();
+        } else {
+          initializeVideoMode();
+        }
+
+        showMessage("애플리케이션이 초기화되었습니다.", "success");
+      }
+
+      // 초기화 및 상태 복원
+      function initializeAppWithRestore() {
+        // work_data가 있으면 상태 복원
+        if (workData && workData.completed) {
+          console.log("작업 상태 복원:", workData);
+
+          if (workData.type === "image" || workData.type === "upscale") {
+            // 이미지 모드로 전환
+            switchToImageMode();
+
+            // 결과 이미지 표시
+            const leftImageArea = document.getElementById("leftImageArea");
+            const rightImageArea = document.getElementById("rightImageArea");
+
+            leftImageArea.innerHTML = `
+              <h3>원본 이미지</h3>
+              <p>파일명: ${workData.original_filename}</p>
+            `;
+
+            rightImageArea.innerHTML = `
+              <h3>처리 결과</h3>
+              <img src="${workData.download_url}" alt="처리된 이미지" style="max-width: 100%; max-height: 50vh;">
+              <div style="margin-top: 10px;">
+                <a href="${workData.download_url}" download="${workData.filename}" class="download-btn">
+                  💾 다운로드
+                </a>
+              </div>
+            `;
+          } else if (workData.type === "video") {
+            // 비디오 모드로 전환
+            switchToVideoMode();
+
+            // 결과 비디오 표시
+            const videoResultContainer = document.getElementById(
+              "videoResultContainer"
+            );
+            videoResultContainer.innerHTML = `
+              <h3>처리 완료된 비디오</h3>
+              <video controls style="max-width: 100%; max-height: 50vh;">
+                <source src="${workData.download_url}" type="video/mp4">
+              </video>
+              <div style="margin-top: 10px;">
+                <a href="${workData.download_url}" download="${
+              workData.filename
+            }" class="download-btn">
+                  💾 다운로드
+                </a>
+              </div>
+              <div style="margin-top: 10px; font-size: 14px;">
+                <p>처리 정보: ${workData.processing_info.join(", ")}</p>
+                <p>해상도: ${workData.resolution} | FPS: ${
+              workData.fps
+            } | 프레임: ${workData.original_frames}개</p>
+              </div>
+            `;
+          }
+
+          showMessage("이전 작업이 복원되었습니다.", "success");
+        } else {
+          // 새 작업 시작
+          initializeApp();
+        }
+      }
+
+      // 초기화
+      document.addEventListener("DOMContentLoaded", function () {
+        initializeAppWithRestore();
+      });
+    </script>
+  </body>
+</html>

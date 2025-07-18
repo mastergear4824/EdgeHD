@@ -1,0 +1,35 @@
+# AI 이미지 처리 도구 - 필수 패키지
+
+# 웹 프레임워크
+Flask==3.0.0
+Flask-CORS==4.0.0
+werkzeug==3.0.1
+
+# AI/딥러닝 프레임워크 (Real-ESRGAN v0.3.0 호환성 확인된 버전)
+torch==2.1.0
+torchvision==0.16.0
+torchaudio==2.1.0
+transformers==4.35.0
+numpy>=1.24.0,<2.0.0  # Real-ESRGAN 호환성
+
+# BiRefNet 모델 의존성
+einops>=0.6.0
+kornia>=0.7.0
+timm>=0.9.0
+
+# 이미지/비디오 처리
+Pillow>=10.0.0
+opencv-python>=4.8.0  # 비디오 처리 지원
+realesrgan==0.3.0     # AI 업스케일링 (General v3 모델)
+
+# 유틸리티
+requests>=2.31.0
+
+# 주의사항:
+# 1. Apple Silicon 사용자는 PYTORCH_ENABLE_MPS_FALLBACK=1 환경변수 설정 필요
+# 2. GPU 가속을 위해 적절한 PyTorch 버전 설치 (CUDA/MPS)
+# 3. 시스템에 따라 torch 설치 방법이 다를 수 있음:
+#    - Apple Silicon: pip install torch torchvision torchaudio
+#    - CUDA 11.8: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+#    - CUDA 12.1: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#    - CPU only: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu 

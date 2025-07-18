@@ -8,6 +8,7 @@ nohup.out
 # 업로드/다운로드 파일
 uploads/*
 downloads/*
+temp/*
 !uploads/.gitkeep
 !downloads/.gitkeep
 

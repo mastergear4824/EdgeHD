@@ -796,24 +796,31 @@ def progress(session_id):
 
 @app.route('/save_upload_state', methods=['POST'])
 def save_upload_state():
-    """이미지 업로드 직후 상태를 즉시 세션에 저장 (메타데이터만)"""
+    """이미지/비디오 업로드 직후 상태를 즉시 세션에 저장 (메타데이터만)"""
     try:
         work_id = request.form.get('work_id')
         original_filename = request.form.get('original_filename')
+        video_type = request.form.get('video_type')  # 비디오인 경우 'uploaded'
         
         if not work_id or not original_filename:
             return jsonify({'error': '필수 정보가 누락되었습니다.'}), 400
         
-        # 업로드된 상태로 세션 저장 (이미지는 클라이언트 localStorage에 저장됨)
-        update_session_data(work_id, {
+        # 업로드된 상태로 세션 저장 (이미지/비디오 구분)
+        session_data = {
             'type': 'uploaded',
             'original_filename': original_filename,
             'completed': False,
             'timestamp': time.time(),
             'status': 'uploaded'  # 처리 대기 상태
-        })
+        }
         
-        print(f"📝 업로드 메타데이터 저장 완료: {work_id} - {original_filename}")
+        # 비디오인 경우 추가 정보 저장
+        if video_type == 'uploaded':
+            session_data['video_type'] = 'uploaded'
+        
+        update_session_data(work_id, session_data)
+        
+        print(f"📝 업로드 메타데이터 저장 완료: {work_id} - {original_filename} ({'비디오' if video_type else '이미지'})")
         
         return jsonify({
             'success': True,

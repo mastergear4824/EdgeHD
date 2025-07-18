@@ -2088,6 +2088,35 @@
           processingTipMessage.textContent = "처리할 작업을 선택해주세요 ✨";
         }
 
+        // 비디오 업로드 상태를 즉시 서버에 저장
+        const formData = new FormData();
+        formData.append("work_id", workId);
+        formData.append("original_filename", file.name);
+        formData.append("video_type", "uploaded");
+
+        // 비디오 URL을 localStorage에 저장 (복원용)
+        localStorage.setItem(`uploaded_video_${workId}`, videoURL);
+        localStorage.setItem(`uploaded_video_name_${workId}`, file.name);
+        console.log(
+          `💾 비디오 데이터 localStorage 저장 완료: uploaded_video_${workId}`
+        );
+
+        fetch("/save_upload_state", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.success) {
+              console.log(`✅ 비디오 업로드 상태 저장 완료: ${workId}`);
+            } else {
+              console.error("❌ 비디오 업로드 상태 저장 실패:", data.error);
+            }
+          })
+          .catch((error) => {
+            console.error("❌ 비디오 업로드 상태 저장 네트워크 오류:", error);
+          });
+
         // 비디오 메타데이터 로드 시 즉시 원본 정보 표시
         leftVideo.addEventListener("loadedmetadata", function initVideoData() {
           // 실제 비디오 데이터로 초기화 (정확한 FPS는 서버에서 받을 예정)
@@ -2433,6 +2462,15 @@
 
         setupVideoDownloadButton();
 
+        // localStorage에서 비디오 데이터 정리
+        if (workId) {
+          localStorage.removeItem(`uploaded_video_${workId}`);
+          localStorage.removeItem(`uploaded_video_name_${workId}`);
+          console.log(
+            `🧹 localStorage 비디오 데이터 정리 완료: uploaded_video_${workId}`
+          );
+        }
+
         // 완료 메시지
         showMessage("🎉 비디오 처리 완료!", "success");
       }
@@ -2658,61 +2696,122 @@
             // 업로드만 된 상태 복원 (처리는 아직 안 함)
             console.log("📤 업로드만 된 상태 복원:", workData);
 
-            currentMode = "image";
-            switchMode("image");
+            if (workData.video_type === "uploaded") {
+              // 비디오 업로드만 된 상태 복원
+              currentMode = "video";
+              switchMode("video");
 
-            // UI 상태 설정 (우측 패널은 빈 상태로)
-            uploadArea.style.display = "none";
-            leftImageArea.classList.add("visible");
-            rightPanel.classList.add("visible");
-            emptyState.classList.remove("hide");
-            rightImageArea.classList.remove("visible");
-            mainContainer.classList.remove("upload-only");
+              // UI 상태 설정
+              videoUploadArea.style.display = "none";
+              leftVideoArea.classList.add("visible");
+              rightPanel.classList.add("visible");
+              videoStatusArea.classList.add("visible");
+              emptyState.classList.add("hide");
+              mainContainer.classList.remove("upload-only");
 
-            // localStorage에서 업로드된 이미지 데이터 불러오기
-            const savedImageData = localStorage.getItem(
-              `uploaded_image_${workId}`
-            );
-            if (savedImageData) {
-              leftImage.src = savedImageData;
-              leftImageLabel.textContent = ""; // 라벨 비우기
-
-              console.log(
-                `📁 localStorage에서 이미지 복원 완료: uploaded_image_${workId}`
+              // localStorage에서 비디오 데이터 복원
+              const savedVideoURL = localStorage.getItem(
+                `uploaded_video_${workId}`
+              );
+              const savedVideoName = localStorage.getItem(
+                `uploaded_video_name_${workId}`
               );
 
-              // currentImageFile 복원 (추가 처리를 위해)
-              fetch(savedImageData)
-                .then((response) => response.blob())
-                .then((blob) => {
-                  currentImageFile = new File(
-                    [blob],
-                    workData.original_filename,
-                    {
-                      type: "image/png",
-                    }
-                  );
-                  console.log(
-                    "📁 업로드된 currentImageFile 복원됨:",
-                    currentImageFile.name
-                  );
-                })
-                .catch((error) => {
-                  console.error("❌ 업로드된 이미지 파일 복원 실패:", error);
-                });
+              if (savedVideoURL && savedVideoName) {
+                leftVideo.src = savedVideoURL;
+                console.log(
+                  `📁 localStorage에서 비디오 복원 완료: uploaded_video_${workId}`
+                );
 
-              // 업로드된 상태 메시지
-              showMessage(
-                "✅ 이전에 업로드된 이미지가 복원되었습니다! 처리를 계속하세요.",
-                "success"
-              );
+                // 처리 메시지 표시 (대기 상태)
+                if (processingMessage) {
+                  processingMessage.style.display = "block";
+                }
+                if (processingMainMessage) {
+                  processingMainMessage.textContent =
+                    "🎬 업로드된 비디오가 복원되었습니다!";
+                }
+                if (processingTipMessage) {
+                  processingTipMessage.textContent =
+                    "처리할 작업을 선택해주세요 ✨";
+                }
+
+                showMessage(
+                  "✅ 이전에 업로드된 비디오가 복원되었습니다! 처리를 계속하세요.",
+                  "success"
+                );
+              } else {
+                // localStorage에 비디오가 없는 경우
+                if (processingMainMessage) {
+                  processingMainMessage.textContent =
+                    "⚠️ 비디오 데이터가 없습니다";
+                }
+                if (processingTipMessage) {
+                  processingTipMessage.textContent = "다시 업로드해주세요";
+                }
+                showMessage(
+                  "⚠️ 이전 업로드 정보는 있지만 비디오 데이터가 없습니다. 다시 업로드해주세요.",
+                  "error"
+                );
+              }
             } else {
-              // localStorage에 이미지가 없는 경우 (이전 버전 호환성 또는 localStorage 삭제됨)
-              leftImageLabel.textContent = ""; // 라벨 비우기
-              showMessage(
-                "⚠️ 이전 업로드 정보는 있지만 이미지 데이터가 없습니다. 다시 업로드해주세요.",
-                "error"
+              // 이미지 업로드만 된 상태 복원
+              currentMode = "image";
+              switchMode("image");
+
+              // UI 상태 설정 (우측 패널은 빈 상태로)
+              uploadArea.style.display = "none";
+              leftImageArea.classList.add("visible");
+              rightPanel.classList.add("visible");
+              emptyState.classList.remove("hide");
+              rightImageArea.classList.remove("visible");
+              mainContainer.classList.remove("upload-only");
+
+              // localStorage에서 업로드된 이미지 데이터 불러오기
+              const savedImageData = localStorage.getItem(
+                `uploaded_image_${workId}`
               );
+              if (savedImageData) {
+                leftImage.src = savedImageData;
+                leftImageLabel.textContent = ""; // 라벨 비우기
+
+                console.log(
+                  `📁 localStorage에서 이미지 복원 완료: uploaded_image_${workId}`
+                );
+
+                // currentImageFile 복원 (추가 처리를 위해)
+                fetch(savedImageData)
+                  .then((response) => response.blob())
+                  .then((blob) => {
+                    currentImageFile = new File(
+                      [blob],
+                      workData.original_filename,
+                      {
+                        type: "image/png",
+                      }
+                    );
+                    console.log(
+                      "📁 업로드된 currentImageFile 복원됨:",
+                      currentImageFile.name
+                    );
+                  })
+                  .catch((error) => {
+                    console.error("❌ 업로드된 이미지 파일 복원 실패:", error);
+                  });
+
+                // 업로드된 상태 메시지
+                showMessage(
+                  "✅ 이전에 업로드된 이미지가 복원되었습니다! 처리를 계속하세요.",
+                  "success"
+                );
+              } else {
+                // localStorage에 이미지가 없는 경우 (이전 버전 호환성 또는 localStorage 삭제됨)
+                leftImageLabel.textContent = ""; // 라벨 비우기
+                showMessage(
+                  "⚠️ 이전 업로드 정보는 있지만 이미지 데이터가 없습니다. 다시 업로드해주세요.",
+                  "error"
+                );
+              }
             }
           } else if (workData.completed && workData.type === "video") {
             // 완료된 비디오 작업 복원

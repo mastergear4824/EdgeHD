@@ -607,8 +607,37 @@ video_processor = VideoProcessor()
 # 프로그래스 상태 관리
 progress_queues = {}
 
-# UUID 기반 세션 스토리지
-session_storage = {}
+# UUID 기반 세션 스토리지 (파일 기반 지속성)
+SESSION_FILE = os.path.join(DOWNLOAD_FOLDER, 'sessions.json')
+
+def load_session_storage():
+    """세션 데이터를 파일에서 로드"""
+    try:
+        if os.path.exists(SESSION_FILE):
+            with open(SESSION_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {}
+    except Exception as e:
+        print(f"⚠️ 세션 데이터 로드 실패: {e}")
+        return {}
+
+def save_session_storage(storage):
+    """세션 데이터를 파일에 저장"""
+    try:
+        with open(SESSION_FILE, 'w', encoding='utf-8') as f:
+            json.dump(storage, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"⚠️ 세션 데이터 저장 실패: {e}")
+
+def update_session_data(work_id, data):
+    """세션 데이터 업데이트 및 저장"""
+    session_storage[work_id] = data
+    save_session_storage(session_storage)
+    print(f"💾 세션 데이터 저장됨: {work_id}")
+
+# 초기 세션 데이터 로드
+session_storage = load_session_storage()
+print(f"📂 기존 세션 {len(session_storage)}개 복원됨")
 
 def allowed_file(filename):
     """허용된 파일 확장자인지 확인"""
@@ -765,6 +794,37 @@ def progress(session_id):
     
     return Response(generate(), mimetype='text/event-stream')
 
+@app.route('/save_upload_state', methods=['POST'])
+def save_upload_state():
+    """이미지 업로드 직후 상태를 즉시 세션에 저장 (메타데이터만)"""
+    try:
+        work_id = request.form.get('work_id')
+        original_filename = request.form.get('original_filename')
+        
+        if not work_id or not original_filename:
+            return jsonify({'error': '필수 정보가 누락되었습니다.'}), 400
+        
+        # 업로드된 상태로 세션 저장 (이미지는 클라이언트 localStorage에 저장됨)
+        update_session_data(work_id, {
+            'type': 'uploaded',
+            'original_filename': original_filename,
+            'completed': False,
+            'timestamp': time.time(),
+            'status': 'uploaded'  # 처리 대기 상태
+        })
+        
+        print(f"📝 업로드 메타데이터 저장 완료: {work_id} - {original_filename}")
+        
+        return jsonify({
+            'success': True,
+            'work_id': work_id,
+            'message': '업로드 상태가 저장되었습니다.'
+        })
+        
+    except Exception as e:
+        print(f"❌ 업로드 상태 저장 실패: {e}")
+        return jsonify({'error': f'상태 저장 실패: {str(e)}'}), 500
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """파일 업로드 및 배경 제거 처리"""
@@ -840,14 +900,14 @@ def upload_file():
         progress_callback(100, "🎉 고품질 AI 배경 제거 완료!")
         
         # 세션 데이터 저장
-        session_storage[session_id] = {
+        update_session_data(session_id, {
             'type': 'image',
             'filename': filename,
             'original_filename': file.filename,
             'download_url': url_for('download_file', filename=filename),
             'completed': True,
             'timestamp': time.time()
-        }
+        })
         
         return jsonify({
             'success': True,
@@ -955,7 +1015,7 @@ def upscale_image():
             pass
         
         # 세션 데이터 저장
-        session_storage[session_id] = {
+        update_session_data(session_id, {
             'type': 'upscale',
             'filename': result_filename,
             'original_filename': file.filename,
@@ -963,7 +1023,7 @@ def upscale_image():
             'scale': scale,
             'completed': True,
             'timestamp': time.time()
-        }
+        })
         
         return jsonify({
             'success': True,
@@ -1119,7 +1179,7 @@ def process_video():
             print(f"✅ 비디오 처리 완료 - {', '.join(processing_info)} 적용")
             
             # 세션 데이터 저장 (실제 파일명 사용)
-            session_storage[session_id] = {
+            update_session_data(session_id, {
                 'type': 'video',
                 'filename': actual_filename,
                 'original_filename': file.filename,
@@ -1133,7 +1193,7 @@ def process_video():
                 'scale_factor': scale_factor,
                 'completed': True,
                 'timestamp': time.time()
-            }
+            })
             
             return jsonify({
                 'success': True,
@@ -1254,6 +1314,7 @@ def reset_session(work_id=None):
         if work_id and work_id in session_storage:
             # 세션 데이터 제거
             del session_storage[work_id]
+            save_session_storage(session_storage)  # 파일에도 반영
             cleaned_items.append(f"세션 데이터: {work_id}")
             print(f"🧹 세션 데이터 정리 완료: {work_id}")
         
@@ -1271,6 +1332,7 @@ def reset_session(work_id=None):
         # 전체 리셋인 경우 (work_id가 없는 경우)
         if not work_id:
             session_storage.clear()
+            save_session_storage(session_storage)  # 파일에도 반영
             progress_queues.clear()
             cleaned_items.append("모든 세션 데이터")
             print("🧹 전체 세션 데이터 정리 완료")

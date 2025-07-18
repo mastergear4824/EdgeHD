@@ -4,8 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>:::AICLUDE EdgeHD:::</title>
-    {% if work_data %}
-    <meta name="work-data" content="{{ work_data | tojson | e }}" />
+    {% if work_id %}
+    <meta name="work-id" content="{{ work_id }}" />
+    {% endif %} {% if work_data %}
+    <script>
+      // 서버에서 전달된 work_data를 JavaScript 변수로 직접 설정
+      window.serverWorkData = {{ work_data | tojson | safe }};
+      console.log("🔗 서버에서 직접 전달된 work_data:", window.serverWorkData);
+    </script>
     {% endif %}
     <style>
       * {
@@ -1234,11 +1240,23 @@
       // 서버에서 전달된 데이터가 있다면 설정
       try {
         const serverWorkId = document.querySelector('meta[name="work-id"]');
-        const serverWorkData = document.querySelector('meta[name="work-data"]');
-        if (serverWorkId) workId = serverWorkId.content;
-        if (serverWorkData) workData = JSON.parse(serverWorkData.content);
+
+        console.log("🔍 디버깅 - serverWorkId:", serverWorkId);
+
+        if (serverWorkId) {
+          workId = serverWorkId.content;
+          console.log("✅ workId 설정됨:", workId);
+        }
+
+        // work_data는 script 태그에서 직접 설정된 window.serverWorkData 사용
+        if (window.serverWorkData) {
+          workData = window.serverWorkData;
+          console.log("✅ workData 설정됨 (script 태그):", workData);
+        } else {
+          console.log("❌ window.serverWorkData가 없음");
+        }
       } catch (e) {
-        console.log("서버 데이터 파싱 실패:", e);
+        console.error("❌ 서버 데이터 설정 실패:", e);
       }
 
       // DOM 요소들
@@ -1937,6 +1955,7 @@
         const reader = new FileReader();
         reader.onload = (e) => {
           leftImage.src = e.target.result;
+          leftImageLabel.textContent = ""; // 라벨 비우기
 
           // 투명도 확인
           if (file.type === "image/png") {
@@ -1949,10 +1968,45 @@
           rightPanel.classList.add("visible");
           mainContainer.classList.remove("upload-only");
 
-          showMessage(
-            "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
-            "success"
+          // 업로드 상태를 즉시 서버에 저장 + 이미지도 localStorage에 저장
+          const formData = new FormData();
+          formData.append("work_id", workId);
+          formData.append("original_filename", file.name);
+
+          // 이미지 데이터를 localStorage에도 저장
+          const imageDataUrl = e.target.result;
+          localStorage.setItem(`uploaded_image_${workId}`, imageDataUrl);
+          console.log(
+            `💾 이미지 데이터 localStorage 저장 완료: uploaded_image_${workId}`
           );
+
+          fetch("/save_upload_state", {
+            method: "POST",
+            body: formData,
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                console.log(`✅ 업로드 상태 저장 완료: ${workId}`);
+                showMessage(
+                  "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
+                  "success"
+                );
+              } else {
+                console.error("❌ 업로드 상태 저장 실패:", data.error);
+                showMessage(
+                  "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
+                  "success"
+                );
+              }
+            })
+            .catch((error) => {
+              console.error("❌ 업로드 상태 저장 네트워크 오류:", error);
+              showMessage(
+                "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
+                "success"
+              );
+            });
         };
         reader.readAsDataURL(file);
       }
@@ -2184,6 +2238,14 @@
 
                 currentDownloadUrl = data.download_url;
                 setupDownloadButton();
+
+                // localStorage에서 임시 이미지 데이터 정리
+                if (workId) {
+                  localStorage.removeItem(`uploaded_image_${workId}`);
+                  console.log(
+                    `🧹 localStorage 임시 이미지 정리 완료: uploaded_image_${workId}`
+                  );
+                }
 
                 showMessage(`${processingName}이 완료되었습니다!`, "success");
               }, 1000);
@@ -2534,63 +2596,155 @@
       // 초기화 및 상태 복원
       function initializeAppWithRestore() {
         // work_data가 있으면 상태 복원
-        if (workData && workData.completed) {
-          console.log("작업 상태 복원:", workData);
+        if (workData) {
+          console.log("✅ 작업 상태 복원 시작:", workData);
 
-          if (workData.type === "image" || workData.type === "upscale") {
-            // 이미지 모드로 전환
-            switchToImageMode();
+          if (
+            workData.completed &&
+            (workData.type === "image" || workData.type === "upscale")
+          ) {
+            // 완료된 이미지/업스케일 작업 복원
+            currentMode = "image";
+            switchMode("image");
 
-            // 결과 이미지 표시
-            const leftImageArea = document.getElementById("leftImageArea");
-            const rightImageArea = document.getElementById("rightImageArea");
+            // UI 상태 설정
+            uploadArea.style.display = "none";
+            leftImageArea.classList.add("visible");
+            rightPanel.classList.add("visible");
+            rightImageArea.classList.add("visible");
+            emptyState.classList.add("hide");
+            mainContainer.classList.remove("upload-only");
 
-            leftImageArea.innerHTML = `
-              <h3>원본 이미지</h3>
-              <p>파일명: ${workData.original_filename}</p>
-            `;
+            // 좌측 패널 - 원본 이미지 표시 (처리된 이미지를 보여줌)
+            leftImage.src = workData.download_url;
+            leftImageLabel.textContent = ""; // 라벨 비우기
 
-            rightImageArea.innerHTML = `
-              <h3>처리 결과</h3>
-              <img src="${workData.download_url}" alt="처리된 이미지" style="max-width: 100%; max-height: 50vh;">
-              <div style="margin-top: 10px;">
-                <a href="${workData.download_url}" download="${workData.filename}" class="download-btn">
-                  💾 다운로드
-                </a>
-              </div>
-            `;
-          } else if (workData.type === "video") {
-            // 비디오 모드로 전환
-            switchToVideoMode();
+            // 우측 패널 - 처리 결과도 동일하게 표시 (사용자가 계속 작업할 수 있도록)
+            rightImage.src = workData.download_url;
+            rightImageLabel.textContent =
+              workData.type === "upscale"
+                ? `${workData.scale}x 업스케일 완료 ✨`
+                : "배경 제거 완료 ✨";
 
-            // 결과 비디오 표시
-            const videoResultContainer = document.getElementById(
-              "videoResultContainer"
+            // 현재 이미지 파일 상태 설정 (추가 처리를 위해)
+            fetch(workData.download_url)
+              .then((response) => response.blob())
+              .then((blob) => {
+                currentImageFile = new File([blob], workData.filename, {
+                  type: "image/png",
+                });
+                console.log(
+                  "📁 currentImageFile 복원됨:",
+                  currentImageFile.name
+                );
+              })
+              .catch((error) => {
+                console.error("❌ 이미지 파일 복원 실패:", error);
+              });
+
+            // 투명도 배경 설정 (배경 제거인 경우)
+            if (workData.type === "image") {
+              rightImage.parentElement.classList.add("transparency-bg");
+              updateRightActionButtons(true);
+            } else {
+              rightImage.parentElement.classList.remove("transparency-bg");
+              updateRightActionButtons(false);
+            }
+
+            // 다운로드 URL 설정
+            currentDownloadUrl = workData.download_url;
+            setupDownloadButton();
+          } else if (workData.type === "uploaded" && !workData.completed) {
+            // 업로드만 된 상태 복원 (처리는 아직 안 함)
+            console.log("📤 업로드만 된 상태 복원:", workData);
+
+            currentMode = "image";
+            switchMode("image");
+
+            // UI 상태 설정 (우측 패널은 빈 상태로)
+            uploadArea.style.display = "none";
+            leftImageArea.classList.add("visible");
+            rightPanel.classList.add("visible");
+            emptyState.classList.remove("hide");
+            rightImageArea.classList.remove("visible");
+            mainContainer.classList.remove("upload-only");
+
+            // localStorage에서 업로드된 이미지 데이터 불러오기
+            const savedImageData = localStorage.getItem(
+              `uploaded_image_${workId}`
             );
-            videoResultContainer.innerHTML = `
-              <h3>처리 완료된 비디오</h3>
-              <video controls style="max-width: 100%; max-height: 50vh;">
-                <source src="${workData.download_url}" type="video/mp4">
-              </video>
-              <div style="margin-top: 10px;">
-                <a href="${workData.download_url}" download="${
-              workData.filename
-            }" class="download-btn">
-                  💾 다운로드
-                </a>
-              </div>
-              <div style="margin-top: 10px; font-size: 14px;">
-                <p>처리 정보: ${workData.processing_info.join(", ")}</p>
-                <p>해상도: ${workData.resolution} | FPS: ${
-              workData.fps
-            } | 프레임: ${workData.original_frames}개</p>
-              </div>
-            `;
+            if (savedImageData) {
+              leftImage.src = savedImageData;
+              leftImageLabel.textContent = ""; // 라벨 비우기
+
+              console.log(
+                `📁 localStorage에서 이미지 복원 완료: uploaded_image_${workId}`
+              );
+
+              // currentImageFile 복원 (추가 처리를 위해)
+              fetch(savedImageData)
+                .then((response) => response.blob())
+                .then((blob) => {
+                  currentImageFile = new File(
+                    [blob],
+                    workData.original_filename,
+                    {
+                      type: "image/png",
+                    }
+                  );
+                  console.log(
+                    "📁 업로드된 currentImageFile 복원됨:",
+                    currentImageFile.name
+                  );
+                })
+                .catch((error) => {
+                  console.error("❌ 업로드된 이미지 파일 복원 실패:", error);
+                });
+
+              // 업로드된 상태 메시지
+              showMessage(
+                "✅ 이전에 업로드된 이미지가 복원되었습니다! 처리를 계속하세요.",
+                "success"
+              );
+            } else {
+              // localStorage에 이미지가 없는 경우 (이전 버전 호환성 또는 localStorage 삭제됨)
+              leftImageLabel.textContent = ""; // 라벨 비우기
+              showMessage(
+                "⚠️ 이전 업로드 정보는 있지만 이미지 데이터가 없습니다. 다시 업로드해주세요.",
+                "error"
+              );
+            }
+          } else if (workData.completed && workData.type === "video") {
+            // 완료된 비디오 작업 복원
+            currentMode = "video";
+            switchMode("video");
+
+            // UI 상태 설정
+            videoUploadArea.style.display = "none";
+            rightPanel.classList.add("visible");
+            videoStatusArea.classList.add("visible");
+            emptyState.classList.add("hide");
+            mainContainer.classList.remove("upload-only");
+
+            // 비디오 처리 완료 상태 표시
+            hideVideoProcessingStatus();
+
+            // 다운로드 URL 설정
+            currentDownloadUrl = workData.download_url;
+            setupVideoDownloadButton();
+
+            console.log("📹 비디오 상태 복원 완료:", {
+              filename: workData.filename,
+              processing_info: workData.processing_info,
+              download_url: workData.download_url,
+            });
           }
 
-          showMessage("이전 작업이 복원되었습니다.", "success");
+          showMessage("✅ 이전 작업 상태가 복원되었습니다!", "success");
+          console.log("🎉 상태 복원 완료");
         } else {
           // 새 작업 시작
+          console.log("🆕 새 작업 시작");
           initializeApp();
         }
       }

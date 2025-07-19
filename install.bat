@@ -71,120 +71,197 @@ echo INFO: Proceeding with AI tool installation using conda.
 
 :: Create Conda environment
 echo Creating Conda environment 'edgehd'...
-echo DEBUG: Using conda path: %CONDA_PATH%
 
-:: Initialize conda for this session if needed
-if exist "%USERPROFILE%\miniconda3\Scripts\activate.bat" (
-    call "%USERPROFILE%\miniconda3\Scripts\activate.bat"
+:: Check if environment already exists
+conda info --envs | findstr "edgehd" >nul 2>&1
+if not errorlevel 1 (
+    echo INFO: Environment 'edgehd' already exists. Skipping creation.
+    goto :activate_env
 )
 
-:: Try different conda invocation methods
-"%CONDA_PATH%" create -n edgehd python=3.10 -y
+:: Create environment using simple conda command
+conda create -n edgehd python=3.10 -y
 if errorlevel 1 (
-    echo INFO: First method failed, trying direct conda command...
-    conda create -n edgehd python=3.10 -y
-    if errorlevel 1 (
-        echo ERROR: Failed to create Conda environment.
-        echo DEBUG: Trying to find conda.exe specifically...
-        if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
-            "%USERPROFILE%\miniconda3\Scripts\conda.exe" create -n edgehd python=3.10 -y
-            if errorlevel 1 (
-                echo ERROR: All conda invocation methods failed.
-                pause
-                exit /b 1
-            )
-        ) else (
-            echo ERROR: Could not find conda.exe
-            pause
-            exit /b 1
-        )
-    )
+    echo ERROR: Failed to create Conda environment.
+    echo INFO: Please check if conda is properly installed and try again.
+    pause
+    exit /b 1
 )
+
+echo SUCCESS: Conda environment 'edgehd' created successfully.
+
+:activate_env
 
 :: Activate environment
 echo Activating Conda environment...
-
-:: Try multiple activation methods
 call conda activate edgehd
 if errorlevel 1 (
-    echo INFO: Direct activation failed, trying with full path...
-    if exist "%USERPROFILE%\miniconda3\Scripts\activate.bat" (
-        call "%USERPROFILE%\miniconda3\Scripts\activate.bat" edgehd
-        if errorlevel 1 (
-            echo ERROR: Failed to activate Conda environment.
-            pause
-            exit /b 1
-        )
+    echo WARNING: Failed to activate environment. Continuing with installation...
+    echo NOTE: You may need to manually activate the environment later.
+)
+
+:: Install latest PyTorch (compatible with Real-ESRGAN)
+echo.
+echo ========================================
+echo Installing latest PyTorch (Real-ESRGAN compatible)...
+echo ========================================
+
+:: Check if ARM64 Windows and handle specially
+echo INFO: Checking system architecture...
+wmic os get osarchitecture | findstr "ARM" >nul
+if not errorlevel 1 (
+    echo.
+    echo ========================================
+    echo ARM64 Windows Detected!
+    echo ========================================
+    echo PyTorch ARM64 Windows support requires:
+    echo 1. Python 3.12 ARM64
+    echo 2. Visual Studio Build Tools with C++
+    echo 3. Rust toolchain
+    echo.
+    echo Please follow these steps:
+    echo 1. Install Visual Studio Build Tools with "Desktop development with C++"
+    echo 2. Install Rust: rustup-init.exe --default-toolchain stable --default-host aarch64-pc-windows-msvc
+    echo 3. Create new environment: conda create -n edgehd-arm python=3.12 -y
+    echo 4. Activate: conda activate edgehd-arm
+    echo 5. Install PyTorch: pip install --extra-index-url https://download.pytorch.org/whl torch torchvision torchaudio
+    echo.
+    echo For more info: https://blogs.windows.com/windowsdeveloper/2025/04/23/pytorch-arm-native-builds-now-available-for-windows/
+    echo ========================================
+    pause
+    exit /b 1
+)
+
+:: Direct activation and pip installation (most reliable method)
+echo INFO: Installing PyTorch using direct conda activation...
+
+call conda activate edgehd
+if errorlevel 1 (
+    echo ERROR: Failed to activate conda environment
+    pause
+    exit /b 1
+)
+
+echo INFO: Trying default PyPI first (most compatible)...
+pip install torch torchvision torchaudio
+if errorlevel 1 (
+    echo INFO: Default PyPI failed. Trying GPU-specific installation...
+    
+    nvidia-smi >nul 2>&1
+    if errorlevel 1 (
+        echo INFO: NVIDIA GPU not found. Trying CPU-specific index...
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
     ) else (
-        echo ERROR: Could not find activate.bat
+        echo INFO: NVIDIA GPU detected. Trying CUDA-specific index...
+        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+    )
+    
+    if errorlevel 1 (
+        echo ERROR: All PyTorch installation methods failed.
+        echo.
+        echo ========================================
+        echo IMPORTANT: Your system may not be compatible
+        echo ========================================
+        echo Possible issues:
+        echo 1. 32-bit Windows (PyTorch requires 64-bit)
+        echo 2. Very old Windows version
+        echo 3. Network connectivity issues
+        echo.
+        echo Manual troubleshooting:
+        echo 1. Check if you have 64-bit Windows:
+        echo    wmic os get osarchitecture
+        echo.
+        echo 2. If 64-bit, try in new CMD:
+        echo    conda activate edgehd
+        echo    pip install torch torchvision torchaudio
+        echo.
+        echo 3. Check Python version:
+        echo    python --version
+        echo ========================================
         pause
         exit /b 1
     )
 )
 
-:: Detect GPU and install PyTorch 2.1.0 (Real-ESRGAN v0.3.0 compatibility)
-echo Installing PyTorch 2.1.0 (Real-ESRGAN v0.3.0 compatible)...
-nvidia-smi >nul 2>&1
-if errorlevel 1 (
-    echo INFO: NVIDIA GPU not found. Installing CPU version PyTorch 2.1.0.
-    pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
-) else (
-    echo INFO: NVIDIA GPU detected. Installing CUDA version PyTorch 2.1.0.
-    pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
-)
+echo SUCCESS: PyTorch installed successfully.
 
-if errorlevel 1 (
-    echo ERROR: Failed to install PyTorch.
-    pause
-    exit /b 1
-)
-
-:: Install compatible transformers version
-echo Installing transformers 4.35.0 (Real-ESRGAN v0.3.0 compatible)...
-pip install transformers==4.35.0
+:: Install latest transformers version
+echo.
+echo ========================================
+echo Installing latest transformers (Real-ESRGAN compatible)...
+echo ========================================
+conda run -n edgehd pip install transformers
 if errorlevel 1 (
     echo ERROR: Failed to install transformers.
-    pause
-    exit /b 1
+    echo INFO: Trying alternative installation method...
+    conda activate edgehd
+    pip install transformers
+    if errorlevel 1 (
+        echo ERROR: All transformers installation methods failed.
+        pause
+        exit /b 1
+    )
 )
 
+echo SUCCESS: transformers installed successfully.
+
 :: Create project directory structure
+echo.
+echo ========================================
 echo Creating project directory structure...
+echo ========================================
 if not exist uploads mkdir uploads
 if not exist downloads mkdir downloads
 if not exist temp mkdir temp
 if not exist models mkdir models
 if not exist models\hub mkdir models\hub
+echo SUCCESS: Directory structure created.
 
-:: Install required packages
-echo Installing required packages...
-pip install -r requirements.txt
+:: Install required packages from requirements.txt (skip PyTorch/transformers)
+echo.
+echo ========================================
+echo Installing other required packages...
+echo ========================================
+echo INFO: Skipping PyTorch and transformers (already installed with specific versions)
+conda run -n edgehd pip install Flask==3.0.0 Flask-CORS==4.0.0 werkzeug==3.0.1
+conda run -n edgehd pip install "numpy>=1.24.0,<2.0.0" Pillow>=10.0.0 opencv-python>=4.8.0 requests>=2.31.0
 if errorlevel 1 (
-    echo ERROR: Failed to install packages.
+    echo ERROR: Failed to install basic packages.
     pause
     exit /b 1
 )
+echo SUCCESS: Basic packages installed.
 
 :: Install AI model dependencies
+echo.
+echo ========================================
 echo Installing AI model dependencies...
-pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
+echo ========================================
+conda run -n edgehd pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
 if errorlevel 1 (
     echo ERROR: Failed to install AI model dependencies.
     pause
     exit /b 1
 )
+echo SUCCESS: AI model dependencies installed.
 
 :: Configure project-local model storage
+echo.
+echo ========================================
 echo Configuring AI models...
+echo ========================================
 echo    All AI models will be stored in project models\ directory
 echo    AI models downloaded on first run:
 echo       * BiRefNet background removal model (~424MB)
 echo       * Real-ESRGAN General v3 4x upscaling model (~17MB)
 echo       * v0.3.0 supports only 4x (no 2x dedicated model)
 echo    Models are managed independently per project
+echo SUCCESS: AI model configuration completed.
 
 echo.
-echo Installation completed successfully!
+echo ========================================
+echo    INSTALLATION COMPLETED SUCCESSFULLY!
+echo ========================================
 echo.
 echo How to run:
 echo    start.bat          - Start background server

@@ -30,7 +30,7 @@
 - **Backend**: Flask 3.0.0, Python 3.10+
 - **AI 모델**: BiRefNet (배경 제거), Real-ESRGAN v0.3.0 General v3 (AI 업스케일링)
 - **이미지/비디오 처리**: OpenCV, Pillow, NumPy<2.0.0 (호환성)
-- **딥러닝**: PyTorch 2.1.0, torchvision 0.16.0, Transformers 4.35.0 (호환성 확인)
+- **딥러닝**: PyTorch 최신버전, torchvision, torchaudio, Transformers (자동 설치)
 - **Frontend**: HTML5, CSS3, JavaScript (Vanilla)
 - **실시간 통신**: Server-Sent Events
 - **비디오 코덱**: MP4V (비디오 재조립)
@@ -104,12 +104,23 @@ chmod +x install.sh
 ./install.sh
 ```
 
-**Windows**:
+**Windows (Intel/AMD)**:
 
 ```cmd
 # 관리자 권한으로 명령 프롬프트 실행 후
 install.bat
 ```
+
+**ARM64 Windows (Surface Pro X, Copilot+ PC 등)**:
+
+> **🚨 중요**: ARM64 Windows는 별도 설치 과정이 필요합니다.
+
+```cmd
+# install.bat 실행 시 ARM64 감지 시 자동 가이드 표시
+install.bat
+```
+
+또는 [ARM64 Windows 전용 가이드](#arm64-windows-전용-가이드) 참조
 
 #### 🔄 Conda가 설치되어 있지 않은 경우 (자동 설치 - 2단계 필요)
 
@@ -207,36 +218,37 @@ conda create -n edgehd python=3.10 -y
 conda activate edgehd
 ```
 
-### 3. PyTorch 설치 (호환성 확인된 버전)
+### 3. PyTorch 설치 (최신 버전 - 자동 호환성)
 
-**⚠️ 중요**: PyTorch 2.1.0과 transformers 4.35.0 조합을 사용해야 합니다. (Real-ESRGAN v0.3.0 호환성)
+**🚨 중요 업데이트**: PyTorch 2.6부터 공식 Anaconda 채널 지원이 중단되었습니다.
 
-#### Apple Silicon (M1/M2/M3/M4 Mac)
+**✅ 권장 방법**: 기본 PyPI에서 최신 버전을 설치합니다. (Real-ESRGAN과 완전 호환)
+
+#### 모든 플랫폼 (권장 - 자동 감지)
 
 ```bash
-# PyTorch 2.1.0 with MPS support (Real-ESRGAN 호환)
-pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0
+# 기본 설치 (GPU/CPU 자동 감지, 가장 안전)
+pip install torch torchvision torchaudio
 ```
 
-#### NVIDIA GPU (CUDA)
+#### 특정 환경별 설치 (필요한 경우만)
 
 ```bash
-# CUDA 11.8 - PyTorch 2.1.0 (Real-ESRGAN 호환)
-pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+# Apple Silicon (M1/M2/M3/M4 Mac) - MPS 지원
+pip install torch torchvision torchaudio
+
+# NVIDIA GPU (CUDA 12.1+) - 최신 CUDA 지원
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# CPU 전용 (이전 컴퓨터나 서버용)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 ```
 
-#### CPU 전용
+#### transformers 최신 버전 설치
 
 ```bash
-# CPU - PyTorch 2.1.0 (Real-ESRGAN 호환)
-pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
-```
-
-#### transformers 호환 버전 설치
-
-```bash
-# Real-ESRGAN v0.3.0 호환 버전
-pip install transformers==4.35.0
+# 최신 transformers (모든 Real-ESRGAN 버전과 호환)
+pip install transformers
 ```
 
 ### 4. 필수 패키지 설치
@@ -245,13 +257,17 @@ pip install transformers==4.35.0
 # 최신 요구사항 설치
 pip install -r requirements.txt
 
-# 주요 패키지 수동 확인 (이미 requirements.txt에 포함됨)
-pip install torch==2.1.0 torchvision==0.16.0 transformers==4.35.0
+# AI 모델 의존성 패키지 설치
 pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
+```
+
+**📝 참고**: PyTorch와 transformers는 3단계에서 이미 설치했으므로 requirements.txt에서 제외되었습니다.
 
 # 설치 확인
+
 pip list | grep -E "(torch|transformers|einops|kornia|timm|realesrgan)"
-```
+
+````
 
 ### 5. 환경 변수 설정 (Apple Silicon)
 
@@ -261,7 +277,7 @@ export PYTORCH_ENABLE_MPS_FALLBACK=1
 
 # 영구 설정을 위해 ~/.zshrc 또는 ~/.bashrc에 추가
 echo 'export PYTORCH_ENABLE_MPS_FALLBACK=1' >> ~/.zshrc
-```
+````
 
 ## 🎮 실행 방법
 
@@ -673,6 +689,80 @@ gunicorn -w 4 -b 0.0.0.0:8080 app:app
 모든 구성요소가 MIT 라이선스와 호환되므로 상업적 사용, 수정, 배포가 자유롭게 가능합니다.
 
 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
+
+## 🛠️ ARM64 Windows 전용 가이드
+
+> **Surface Pro X, Copilot+ PC, ARM64 Windows 사용자 전용**
+
+### 🎯 PyTorch ARM64 Windows 지원 소식
+
+**🎉 중요 업데이트**: PyTorch 2.7부터 ARM64 Windows를 공식 지원합니다! (2025년 4월 발표)
+
+### 📋 전제 조건
+
+#### 1. Visual Studio Build Tools 설치
+
+```cmd
+# https://visualstudio.microsoft.com/visual-cpp-build-tools/ 에서 다운로드
+# 설치 시 "Desktop development with C++" 워크로드 선택
+# ARM64 관련 구성 요소들도 함께 설치됨
+```
+
+#### 2. Rust 설치
+
+```cmd
+# https://win.rustup.rs/x86_64 에서 다운로드 후 실행:
+rustup-init.exe --default-toolchain stable --default-host aarch64-pc-windows-msvc
+```
+
+#### 3. Python 3.12 ARM64 설치
+
+```cmd
+# https://www.python.org/downloads/ 에서 ARM64 installer 다운로드
+# "Windows installer (ARM64)" 선택하여 설치
+```
+
+### 🚀 설치 단계
+
+#### 1. 새로운 Conda 환경 생성
+
+```cmd
+# Python 3.12로 새 환경 생성
+conda create -n edgehd-arm python=3.12 -y
+conda activate edgehd-arm
+```
+
+#### 2. PyTorch ARM64 설치
+
+```cmd
+# ARM64 Windows용 PyTorch 설치
+pip install --extra-index-url https://download.pytorch.org/whl torch torchvision torchaudio
+
+# 성공 확인
+python -c "import torch; print(f'PyTorch {torch.__version__} on ARM64 Windows')"
+```
+
+#### 3. 나머지 패키지 설치
+
+```cmd
+# EdgeHD 프로젝트 폴더에서
+pip install transformers einops kornia timm realesrgan==0.3.0
+pip install Flask Flask-CORS opencv-python Pillow requests
+```
+
+#### 4. 실행
+
+```cmd
+# 환경 활성화 후 서버 시작
+conda activate edgehd-arm
+python app.py
+```
+
+### 📚 참고 자료
+
+- [Microsoft 공식 발표](https://blogs.windows.com/windowsdeveloper/2025/04/23/pytorch-arm-native-builds-now-available-for-windows/)
+- [ARM PyTorch 설치 가이드](https://learn.arm.com/install-guides/pytorch/)
+- [ExecuTorch ARM64 최적화](https://pytorch.org/blog/unleashing-ai-mobile/)
 
 ## 🤝 기여
 

@@ -94,7 +94,9 @@ cd EdgeHD
 
 운영체제에 맞는 설치 스크립트를 사용하여 한 번에 설치할 수 있습니다:
 
-#### Linux/macOS
+#### 📋 Conda가 이미 설치된 경우 (일반적인 설치)
+
+**Linux/macOS**:
 
 ```bash
 # 실행 권한 부여 및 설치
@@ -102,11 +104,63 @@ chmod +x install.sh
 ./install.sh
 ```
 
-#### Windows
+**Windows**:
 
 ```cmd
-:: 관리자 권한으로 명령 프롬프트 실행 후
+# 관리자 권한으로 명령 프롬프트 실행 후
 install.bat
+```
+
+#### 🔄 Conda가 설치되어 있지 않은 경우 (자동 설치 - 2단계 필요)
+
+> **⚠️ 중요**: Conda가 없는 경우 **반드시 2번 실행**해야 합니다!
+
+**Windows 사용자**:
+
+```cmd
+# 🎯 1단계: Miniconda 자동 설치
+install.bat
+# 메시지: "Install Miniconda automatically? (Y/n):" → Y 입력
+# ✅ 설치 완료 후 "Please run this script again" 메시지 표시
+# 🔄 터미널을 완전히 닫고 새로 열기
+
+# 🎯 2단계: AI 도구 설치
+install.bat
+# ✅ 자동으로 모든 패키지 설치 완료
+```
+
+**Linux/macOS 사용자**:
+
+```bash
+# 🎯 1단계: Miniconda 자동 설치
+./install.sh
+# 메시지: "Install Miniconda automatically? (Y/n):" → Y 입력
+# ✅ 설치 완료 후 "Please run this script again" 메시지 표시
+# 🔄 터미널을 완전히 닫고 새로 열기
+
+# 🎯 2단계: AI 도구 설치
+./install.sh
+# ✅ 자동으로 모든 패키지 설치 완료
+```
+
+#### 🔍 왜 2번 실행해야 하나요?
+
+1. **1차 실행**: Miniconda를 시스템에 설치하고 PATH 환경변수를 설정
+2. **터미널 재시작**: 새로운 PATH 설정이 적용되도록 필요
+3. **2차 실행**: 이제 `conda` 명령어를 사용할 수 있어서 AI 도구 설치 진행
+
+#### 💡 설치 확인 방법
+
+설치가 완료되면 다음과 같은 메시지를 확인할 수 있습니다:
+
+```
+Installation completed successfully!
+
+How to run:
+   conda activate edgehd
+   python app.py
+
+Server URL: http://localhost:8080
 ```
 
 ### 🗑️ 환경 완전 정리 (문제 해결용)

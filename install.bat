@@ -4,57 +4,122 @@ setlocal enabledelayedexpansion
 echo Starting AI Image/Video Processing Tool Installation...
 echo.
 
-:: Check Conda installation
-where conda >nul 2>&1
-if errorlevel 1 (
-    echo WARNING: Conda is not installed.
-    echo.
-    echo Would you like to automatically install Miniconda? (Recommended)
-    echo This will download and install Miniconda3 (~100MB)
-    echo.
-    set /p choice="Install Miniconda automatically? (Y/n): "
-    if /i "!choice!" neq "n" (
-        call :install_miniconda
-        if errorlevel 1 (
-            echo ERROR: Failed to install Miniconda.
-            echo Please install manually from: https://docs.conda.io/en/latest/miniconda.html
-            pause
-            exit /b 1
-        )
-        echo.
-        echo Miniconda installation completed!
-        echo Please run this script again to continue with the setup.
-        pause
-        exit /b 0
-    ) else (
-        echo Please install Conda manually:
-        echo    * Miniconda: https://docs.conda.io/en/latest/miniconda.html
-        echo    * Anaconda: https://www.anaconda.com/products/distribution
-        echo.
-        echo After installation, restart terminal and run this script again.
+:: Check if conda is available and get the actual path
+for /f "tokens=*" %%i in ('where conda 2^>nul') do (
+    echo SUCCESS: Conda found at %%i
+    set "CONDA_PATH=%%i"
+    goto :start_installation
+)
+
+:: Check common Miniconda installation paths
+if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
+    echo SUCCESS: Conda found at %USERPROFILE%\miniconda3\Scripts\conda.exe
+    set "CONDA_PATH=%USERPROFILE%\miniconda3\Scripts\conda.exe"
+    goto :start_installation
+)
+
+if exist "%USERPROFILE%\Miniconda3\Scripts\conda.exe" (
+    echo SUCCESS: Conda found at %USERPROFILE%\Miniconda3\Scripts\conda.exe
+    set "CONDA_PATH=%USERPROFILE%\Miniconda3\Scripts\conda.exe"
+    goto :start_installation
+)
+
+if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" (
+    echo SUCCESS: Conda found at C:\ProgramData\Miniconda3\Scripts\conda.exe
+    set "CONDA_PATH=C:\ProgramData\Miniconda3\Scripts\conda.exe"
+    goto :start_installation
+)
+
+if exist "%LOCALAPPDATA%\miniconda3\Scripts\conda.exe" (
+    echo SUCCESS: Conda found at %LOCALAPPDATA%\miniconda3\Scripts\conda.exe
+    set "CONDA_PATH=%LOCALAPPDATA%\miniconda3\Scripts\conda.exe"
+    goto :start_installation
+)
+
+:: Conda not found - offer to install
+echo WARNING: Conda is not installed.
+echo.
+echo Would you like to automatically install Miniconda? (Recommended)
+echo This will download and install Miniconda3 (~100MB)
+echo.
+set /p choice="Install Miniconda automatically? (Y/n): "
+if /i "%choice%" neq "n" (
+    call :install_miniconda
+    if errorlevel 1 (
+        echo ERROR: Failed to install Miniconda.
+        echo Please install manually from: https://docs.conda.io/en/latest/miniconda.html
         pause
         exit /b 1
     )
+    echo.
+    echo Miniconda installation completed!
+    echo Please run this script again to continue with the setup.
+    pause
+    exit /b 0
+) else (
+    echo Please install Conda manually:
+    echo    * Miniconda: https://docs.conda.io/en/latest/miniconda.html
+    echo    * Anaconda: https://www.anaconda.com/products/distribution
+    echo.
+    echo After installation, restart terminal and run this script again.
+    pause
+    exit /b 1
 )
 
-echo SUCCESS: Conda is installed.
+:start_installation
+echo INFO: Proceeding with AI tool installation using conda.
 
 :: Create Conda environment
 echo Creating Conda environment 'edgehd'...
-call conda create -n edgehd python=3.10 -y
+echo DEBUG: Using conda path: %CONDA_PATH%
+
+:: Initialize conda for this session if needed
+if exist "%USERPROFILE%\miniconda3\Scripts\activate.bat" (
+    call "%USERPROFILE%\miniconda3\Scripts\activate.bat"
+)
+
+:: Try different conda invocation methods
+"%CONDA_PATH%" create -n edgehd python=3.10 -y
 if errorlevel 1 (
-    echo ERROR: Failed to create Conda environment.
-    pause
-    exit /b 1
+    echo INFO: First method failed, trying direct conda command...
+    conda create -n edgehd python=3.10 -y
+    if errorlevel 1 (
+        echo ERROR: Failed to create Conda environment.
+        echo DEBUG: Trying to find conda.exe specifically...
+        if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
+            "%USERPROFILE%\miniconda3\Scripts\conda.exe" create -n edgehd python=3.10 -y
+            if errorlevel 1 (
+                echo ERROR: All conda invocation methods failed.
+                pause
+                exit /b 1
+            )
+        ) else (
+            echo ERROR: Could not find conda.exe
+            pause
+            exit /b 1
+        )
+    )
 )
 
 :: Activate environment
 echo Activating Conda environment...
+
+:: Try multiple activation methods
 call conda activate edgehd
 if errorlevel 1 (
-    echo ERROR: Failed to activate Conda environment.
-    pause
-    exit /b 1
+    echo INFO: Direct activation failed, trying with full path...
+    if exist "%USERPROFILE%\miniconda3\Scripts\activate.bat" (
+        call "%USERPROFILE%\miniconda3\Scripts\activate.bat" edgehd
+        if errorlevel 1 (
+            echo ERROR: Failed to activate Conda environment.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo ERROR: Could not find activate.bat
+        pause
+        exit /b 1
+    )
 )
 
 :: Detect GPU and install PyTorch 2.1.0 (Real-ESRGAN v0.3.0 compatibility)
@@ -133,8 +198,22 @@ echo See README.md for detailed usage instructions.
 echo Creating run script...
 (
 echo @echo off
+echo setlocal enabledelayedexpansion
 echo echo Starting AI Image/Video Processing Tool...
-echo call conda activate edgehd
+echo.
+echo :: Find conda installation
+echo where conda ^>nul 2^>^&1
+echo if not errorlevel 1 ^(
+echo     call conda activate edgehd
+echo ^) else ^(
+echo     if exist "%%USERPROFILE%%\miniconda3\Scripts\activate.bat" ^(
+echo         call "%%USERPROFILE%%\miniconda3\Scripts\activate.bat" edgehd
+echo     ^) else ^(
+echo         echo ERROR: Conda not found. Please run install.bat first.
+echo         pause
+echo         exit /b 1
+echo     ^)
+echo ^)
 echo.
 echo :: Set environment variables for project-local model storage
 echo set HF_HOME=%%cd%%\models
@@ -178,8 +257,8 @@ echo Installing Miniconda3...
 echo This will install to: %USERPROFILE%\miniconda3
 echo.
 
-:: Run installer silently
-"%TEMP%\%INSTALLER_NAME%" /InstallationType=JustMe /RegisterPython=1 /S /D=%USERPROFILE%\miniconda3
+:: Run installer silently with PATH addition
+"%TEMP%\%INSTALLER_NAME%" /InstallationType=JustMe /AddToPath=1 /RegisterPython=1 /S /D=%USERPROFILE%\miniconda3
 if errorlevel 1 (
     echo ERROR: Miniconda installation failed.
     exit /b 1
@@ -191,8 +270,12 @@ del "%TEMP%\%INSTALLER_NAME%" >nul 2>&1
 :: Add to PATH for current session
 set "PATH=%USERPROFILE%\miniconda3;%USERPROFILE%\miniconda3\Scripts;%USERPROFILE%\miniconda3\Library\bin;%PATH%"
 
-:: Initialize conda for cmd
+:: Initialize conda for both cmd and PowerShell
 call "%USERPROFILE%\miniconda3\Scripts\conda.exe" init cmd.exe >nul 2>&1
+call "%USERPROFILE%\miniconda3\Scripts\conda.exe" init powershell >nul 2>&1
+
+:: Refresh environment variables for current session
+call "%USERPROFILE%\miniconda3\Scripts\activate.bat"
 
 echo.
 echo Miniconda3 has been installed successfully!

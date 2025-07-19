@@ -7,14 +7,34 @@ echo.
 :: Check Conda installation
 where conda >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Conda is not installed.
-    echo Please install Conda first:
-    echo    * Miniconda: https://docs.conda.io/en/latest/miniconda.html
-    echo    * Anaconda: https://www.anaconda.com/products/distribution
+    echo WARNING: Conda is not installed.
     echo.
-    echo After installation, restart terminal and run this script again.
-    pause
-    exit /b 1
+    echo Would you like to automatically install Miniconda? (Recommended)
+    echo This will download and install Miniconda3 (~100MB)
+    echo.
+    set /p choice="Install Miniconda automatically? (Y/n): "
+    if /i "!choice!" neq "n" (
+        call :install_miniconda
+        if errorlevel 1 (
+            echo ERROR: Failed to install Miniconda.
+            echo Please install manually from: https://docs.conda.io/en/latest/miniconda.html
+            pause
+            exit /b 1
+        )
+        echo.
+        echo Miniconda installation completed!
+        echo Please run this script again to continue with the setup.
+        pause
+        exit /b 0
+    ) else (
+        echo Please install Conda manually:
+        echo    * Miniconda: https://docs.conda.io/en/latest/miniconda.html
+        echo    * Anaconda: https://www.anaconda.com/products/distribution
+        echo.
+        echo After installation, restart terminal and run this script again.
+        pause
+        exit /b 1
+    )
 )
 
 echo SUCCESS: Conda is installed.
@@ -127,4 +147,57 @@ echo pause
 echo SUCCESS: Run script 'run.bat' created.
 echo    You can now simply double-click 'run.bat' to start the application.
 echo.
-pause 
+pause
+goto :eof
+
+:: Miniconda installation function
+:install_miniconda
+echo.
+echo Downloading Miniconda3 installer...
+echo This may take a few minutes depending on your internet connection.
+
+:: Detect architecture
+if "%PROCESSOR_ARCHITECTURE%"=="AMD64" (
+    set "INSTALLER_URL=https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+    set "INSTALLER_NAME=Miniconda3-latest-Windows-x86_64.exe"
+) else (
+    set "INSTALLER_URL=https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86.exe"
+    set "INSTALLER_NAME=Miniconda3-latest-Windows-x86.exe"
+)
+
+:: Download using PowerShell
+powershell -Command "& {[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri '%INSTALLER_URL%' -OutFile '%TEMP%\%INSTALLER_NAME%'}"
+if errorlevel 1 (
+    echo ERROR: Failed to download Miniconda installer.
+    echo Please check your internet connection and try again.
+    exit /b 1
+)
+
+echo.
+echo Installing Miniconda3...
+echo This will install to: %USERPROFILE%\miniconda3
+echo.
+
+:: Run installer silently
+"%TEMP%\%INSTALLER_NAME%" /InstallationType=JustMe /RegisterPython=1 /S /D=%USERPROFILE%\miniconda3
+if errorlevel 1 (
+    echo ERROR: Miniconda installation failed.
+    exit /b 1
+)
+
+:: Clean up installer
+del "%TEMP%\%INSTALLER_NAME%" >nul 2>&1
+
+:: Add to PATH for current session
+set "PATH=%USERPROFILE%\miniconda3;%USERPROFILE%\miniconda3\Scripts;%USERPROFILE%\miniconda3\Library\bin;%PATH%"
+
+:: Initialize conda for cmd
+call "%USERPROFILE%\miniconda3\Scripts\conda.exe" init cmd.exe >nul 2>&1
+
+echo.
+echo Miniconda3 has been installed successfully!
+echo Location: %USERPROFILE%\miniconda3
+echo.
+echo IMPORTANT: Please close this terminal and open a new one for conda to work properly.
+
+exit /b 0 

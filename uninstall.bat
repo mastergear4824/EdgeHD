@@ -1,103 +1,123 @@
 @echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
 
-echo 🗑️  EdgeHD AI 이미지 처리 애플리케이션 제거를 시작합니다...
+echo Starting EdgeHD AI Image Processing Application removal...
 
-REM 현재 디렉토리 확인
+REM Check current directory
 if not exist "app.py" (
-    echo ❌ EdgeHD 프로젝트 디렉토리에서 실행해주세요
+    echo ERROR: Please run this script from the EdgeHD project directory
     pause
     exit /b 1
 )
 
-REM 사용자 확인
+REM User confirmation
 echo.
-echo ⚠️  다음 항목들이 제거됩니다:
-echo    - Python 가상환경 (venv\)
-echo    - 설치된 Python 패키지들
-echo    - AI 모델 파일들 (models\)
-echo    - 업로드된 파일들 (uploads\)
-echo    - 다운로드된 파일들 (downloads\)
-echo    - 환경변수 설정
+echo WARNING: The following items will be removed:
+echo    - Conda environment (edgehd)
+echo    - Installed Python packages
+echo    - AI model files (models\)
+echo    - Uploaded files (uploads\)
+echo    - Downloaded files (downloads\)
+echo    - Environment variable settings
 echo.
-set /p "confirm=정말로 제거하시겠습니까? (y/N): "
+set /p "confirm=Are you sure you want to proceed? (y/N): "
 if /i not "%confirm%"=="y" (
-    echo ❌ 제거가 취소되었습니다
+    echo INFO: Removal cancelled
     pause
     exit /b 1
 )
 
 echo.
-echo 🧹 환경 정리를 시작합니다...
+echo Starting environment cleanup...
 
-REM 1. 가상환경 제거
-if exist "venv" (
-    echo 📦 Python 가상환경 제거 중...
-    rmdir /s /q "venv" 2>nul
-    echo ✅ 가상환경 제거 완료
+REM 1. Remove Conda environment
+echo INFO: Checking for Conda environment 'edgehd'...
+where conda >nul 2>&1
+if not errorlevel 1 (
+    call conda info --envs | find "edgehd" >nul
+    if not errorlevel 1 (
+        echo INFO: Removing Conda environment 'edgehd'...
+        call conda remove -n edgehd --all -y >nul 2>&1
+        echo SUCCESS: Conda environment removed
+    ) else (
+        echo INFO: Conda environment 'edgehd' not found
+    )
 ) else (
-    echo ℹ️  가상환경이 없습니다
+    echo INFO: Conda not found, skipping environment removal
 )
 
-REM 2. 모델 파일들 제거
+REM 2. Remove model files
 if exist "models" (
-    echo 🤖 AI 모델 파일들 제거 중...
+    echo INFO: Removing AI model files...
     rmdir /s /q "models" 2>nul
-    echo ✅ 모델 파일들 제거 완료
+    echo SUCCESS: Model files removed
 ) else (
-    echo ℹ️  모델 파일들이 없습니다
+    echo INFO: No model files found
 )
 
-REM 3. 업로드 파일들 정리
+REM 3. Clean upload files
 if exist "uploads" (
-    echo 📁 업로드 파일들 정리 중...
+    echo INFO: Cleaning upload files...
     for /f %%i in ('dir /b "uploads\*" 2^>nul ^| findstr /v ".gitkeep"') do (
         del /q "uploads\%%i" 2>nul
     )
-    echo ✅ 업로드 파일들 정리 완료
+    echo SUCCESS: Upload files cleaned
 )
 
-REM 4. 다운로드 파일들 정리
+REM 4. Clean download files
 if exist "downloads" (
-    echo 📂 다운로드 파일들 정리 중...
+    echo INFO: Cleaning download files...
     for /f %%i in ('dir /b "downloads\*" 2^>nul ^| findstr /v ".gitkeep"') do (
         del /q "downloads\%%i" 2>nul
     )
-    echo ✅ 다운로드 파일들 정리 완료
+    echo SUCCESS: Download files cleaned
 )
 
-REM 5. Python 캐시 파일들 제거
-echo 🗂️  Python 캐시 파일들 제거 중...
+REM 5. Remove temporary files
+if exist "temp" (
+    echo INFO: Removing temporary files...
+    rmdir /s /q "temp" 2>nul
+    echo SUCCESS: Temporary files removed
+)
+
+REM 6. Remove Python cache files
+echo INFO: Removing Python cache files...
 for /d /r . %%d in (__pycache__) do (
     if exist "%%d" rmdir /s /q "%%d" 2>nul
 )
 del /s /q "*.pyc" 2>nul
 del /s /q "*.pyo" 2>nul
-echo ✅ 캐시 파일들 제거 완료
+echo SUCCESS: Cache files removed
 
-REM 6. 환경변수 설정 안내
+REM 7. Remove log files
+if exist "app.log" del "app.log" 2>nul
+if exist "app_error.log" del "app_error.log" 2>nul
+if exist "app.pid" del "app.pid" 2>nul
+echo SUCCESS: Log files removed
+
+REM 8. Environment variable cleanup guidance
 echo.
-echo 🔧 환경변수 정리 안내:
-echo    다음 환경변수들을 수동으로 제거해주세요:
+echo ENVIRONMENT VARIABLE CLEANUP:
+echo    Please manually remove the following environment variables:
 echo    - HF_HOME
 echo    - TRANSFORMERS_CACHE
 echo.
-echo    시스템 속성 ^> 고급 ^> 환경변수에서 제거하거나
-echo    다음 명령어를 실행:
-echo    setx HF_HOME ""
-echo    setx TRANSFORMERS_CACHE ""
+echo    To remove them, you can either:
+echo    1. Go to System Properties ^> Advanced ^> Environment Variables
+echo    2. Or run these commands:
+echo       setx HF_HOME ""
+echo       setx TRANSFORMERS_CACHE ""
 
-REM 7. 시스템 패키지 제거 안내 (선택사항)
+REM 9. System package removal guidance (optional)
 echo.
-echo 📋 추가 정리 옵션:
-echo    시스템에 설치된 Python 패키지들도 제거하려면:
+echo ADDITIONAL CLEANUP OPTIONS:
+echo    To also remove system-installed Python packages:
 echo    pip uninstall -y flask flask-cors pillow torch torchvision transformers timm realesrgan opencv-python numpy
 echo.
 
-echo 🎉 EdgeHD 제거가 완료되었습니다!
+echo SUCCESS: EdgeHD removal completed!
 echo.
-echo 📝 재설치하려면:
+echo TO REINSTALL:
 echo    install.bat
 echo.
 

@@ -1214,9 +1214,9 @@ def process_video():
             })
             
         finally:
-            # 임시 파일들 정리 (비동기로 실행)
+            # 임시 파일들 정리 (비동기로 실행) - 완료 감지 후 정리되도록 시간 연장
             def cleanup():
-                time.sleep(2)  # 응답 후 약간 대기
+                time.sleep(10)  # 10초 대기로 늘림 - 완료 감지 시간 확보
                 video_processor.cleanup_temp_dir(session_id)
             
             cleanup_thread = threading.Thread(target=cleanup)
@@ -1240,43 +1240,59 @@ def video_progress_files(session_id):
         frames_dir = os.path.join(temp_dir, 'frames')
         processed_dir = os.path.join(temp_dir, 'processed')
         
-        # 디렉토리 존재 확인
-        if not os.path.exists(temp_dir):
+        # 총 프레임 수와 처리된 프레임 수 (temp 디렉토리가 있는 경우만)
+        total_frames = 0
+        processed_count = 0
+        
+        if os.path.exists(temp_dir):
+            # 총 프레임 수 (frames 디렉토리의 파일 수)
+            if os.path.exists(frames_dir):
+                total_frames = len([f for f in os.listdir(frames_dir) 
+                                   if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+            
+            # 처리된 프레임 수 (processed 디렉토리의 파일 수)
+            if os.path.exists(processed_dir):
+                processed_count = len([f for f in os.listdir(processed_dir) 
+                                      if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
+        
+        # 완료 여부 확인 - downloads 폴더에서 session_id로 시작하는 비디오 파일 찾기
+        download_folder = app.config['DOWNLOAD_FOLDER']
+        completed = False
+        download_url = None
+        actual_filename = None
+        
+        try:
+            # downloads 폴더에서 session_id의 첫 8자리로 시작하는 mp4 파일 찾기
+            session_prefix = session_id[:8]  # 'd78709e1' 부분만 사용
+            video_files = [f for f in os.listdir(download_folder) 
+                          if f.startswith(f"processed_{session_prefix}") and f.lower().endswith('.mp4')]
+            
+            if video_files:
+                # 가장 최근 파일 선택
+                video_files.sort(key=lambda f: os.path.getmtime(os.path.join(download_folder, f)), reverse=True)
+                actual_filename = video_files[0]
+                completed = True
+                download_url = url_for('download_file', filename=actual_filename)
+                print(f"✅ 완료된 비디오 파일 발견: {actual_filename}")
+                
+                # temp 디렉토리가 없어도 완료로 처리 (이미 정리된 경우)
+                if total_frames == 0:
+                    total_frames = processed_count = 1  # 완료 표시를 위한 더미 값
+                    
+            else:
+                print(f"⏳ 비디오 파일 아직 준비중: processed_{session_prefix}*.mp4")
+                
+        except Exception as e:
+            print(f"⚠️ 완료 파일 검색 실패: {e}")
+        
+        # temp 디렉토리도 없고 완료 파일도 없으면 404
+        if not os.path.exists(temp_dir) and not completed:
             return jsonify({
                 'processed_count': 0, 
                 'total_frames': 0, 
                 'completed': False,
                 'error': '세션을 찾을 수 없습니다.'
             }), 404
-        
-        # 총 프레임 수 (frames 디렉토리의 파일 수)
-        total_frames = 0
-        if os.path.exists(frames_dir):
-            total_frames = len([f for f in os.listdir(frames_dir) 
-                               if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
-        
-        # 처리된 프레임 수 (processed 디렉토리의 파일 수)
-        processed_count = 0
-        if os.path.exists(processed_dir):
-            processed_count = len([f for f in os.listdir(processed_dir) 
-                                  if f.lower().endswith(('.png', '.jpg', '.jpeg'))])
-        
-        # 완료 여부 확인 (output.mp4 파일 존재 여부)
-        output_video = os.path.join(temp_dir, 'output.mp4')
-        completed = os.path.exists(output_video)
-        
-        # 다운로드 URL 생성 (완료된 경우)
-        download_url = None
-        if completed:
-            download_filename = f"processed_video_{session_id}.mp4"
-            download_path = os.path.join(app.config['DOWNLOAD_FOLDER'], download_filename)
-            
-            # 다운로드 폴더로 복사 (아직 안 되어 있다면)
-            if not os.path.exists(download_path):
-                import shutil
-                shutil.copy2(output_video, download_path)
-            
-            download_url = url_for('download_file', filename=download_filename)
         
         print(f"📊 파일 수 확인 - {session_id}: {processed_count}/{total_frames} (완료: {completed})")
         
@@ -1285,6 +1301,7 @@ def video_progress_files(session_id):
             'total_frames': total_frames,
             'completed': completed,
             'download_url': download_url,
+            'filename': actual_filename,
             'session_id': session_id
         })
         
@@ -1301,13 +1318,38 @@ def video_progress_files(session_id):
 def download_file(filename):
     """처리된 파일 다운로드"""
     try:
+        file_path = os.path.join(app.config['DOWNLOAD_FOLDER'], filename)
+        
+        # 파일 존재 여부 확인
+        if not os.path.exists(file_path):
+            print(f"❌ 파일을 찾을 수 없음: {file_path}")
+            # downloads 폴더의 모든 파일 나열 (디버깅용)
+            download_folder = app.config['DOWNLOAD_FOLDER']
+            if os.path.exists(download_folder):
+                existing_files = os.listdir(download_folder)
+                print(f"📁 downloads 폴더의 기존 파일들: {existing_files}")
+                
+                # filename과 유사한 파일이 있는지 확인
+                similar_files = [f for f in existing_files if filename.split('_')[0] in f or filename.split('.')[0] in f]
+                if similar_files:
+                    print(f"🔍 유사한 파일 발견: {similar_files}")
+            else:
+                print(f"❌ downloads 폴더가 존재하지 않음: {download_folder}")
+            
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        # 파일 크기 확인
+        file_size = os.path.getsize(file_path)
+        print(f"📥 다운로드 시작: {filename} (크기: {file_size:,} bytes)")
+        
         return send_file(
-            os.path.join(app.config['DOWNLOAD_FOLDER'], filename),
+            file_path,
             as_attachment=True,
             download_name=filename
         )
     except Exception as e:
         print(f"❌ 다운로드 실패: {e}")
+        print(f"📍 요청된 파일: {filename}")
         return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
 
 @app.route('/reset', methods=['POST'])

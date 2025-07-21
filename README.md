@@ -86,7 +86,7 @@ bash Miniconda3-latest-Linux-x86_64.sh
 
 ```bash
 # 프로젝트 클론
-git clone <repository-url>
+git clone https://github.com/mastergear4824/EdgeHD
 cd EdgeHD
 ```
 

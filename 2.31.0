@@ -1,0 +1,22 @@
+Collecting numpy<2.0.0,>=1.24.0
+  Using cached numpy-1.26.4-cp311-cp311-win_amd64.whl.metadata (61 kB)
+Requirement already satisfied: Pillow in c:\users\keunj\anaconda3\envs\edgehd\lib\site-packages (11.3.0)
+Collecting opencv-python
+  Downloading opencv_python-4.12.0.88-cp37-abi3-win_amd64.whl.metadata (19 kB)
+Requirement already satisfied: requests in c:\users\keunj\anaconda3\envs\edgehd\lib\site-packages (2.32.4)
+INFO: pip is looking at multiple versions of opencv-python to determine which version is compatible with other requirements. This could take a while.
+  Downloading opencv_python-4.11.0.86-cp37-abi3-win_amd64.whl.metadata (20 kB)
+Requirement already satisfied: charset_normalizer<4,>=2 in c:\users\keunj\anaconda3\envs\edgehd\lib\site-packages (from requests) (3.4.2)
+Requirement already satisfied: idna<4,>=2.5 in c:\users\keunj\anaconda3\envs\edgehd\lib\site-packages (from requests) (3.10)
+Requirement already satisfied: urllib3<3,>=1.21.1 in c:\users\keunj\anaconda3\envs\edgehd\lib\site-packages (from requests) (2.5.0)
+Requirement already satisfied: certifi>=2017.4.17 in c:\users\keunj\anaconda3\envs\edgehd\lib\site-packages (from requests) (2025.7.14)
+Using cached numpy-1.26.4-cp311-cp311-win_amd64.whl (15.8 MB)
+Downloading opencv_python-4.11.0.86-cp37-abi3-win_amd64.whl (39.5 MB)
+   ---------------------------------------- 39.5/39.5 MB 33.5 MB/s eta 0:00:00
+Installing collected packages: numpy, opencv-python
+  Attempting uninstall: numpy
+    Found existing installation: numpy 2.3.1
+    Uninstalling numpy-2.3.1:
+      Successfully uninstalled numpy-2.3.1
+
+Successfully installed numpy-1.26.4 opencv-python-4.11.0.86

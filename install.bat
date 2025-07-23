@@ -36,6 +36,19 @@ if exist "%LOCALAPPDATA%\miniconda3\Scripts\conda.exe" (
     goto :start_installation
 )
 
+:: Check Anaconda paths as well
+if exist "%USERPROFILE%\anaconda3\condabin\conda.bat" (
+    echo SUCCESS: Conda found at %USERPROFILE%\anaconda3\condabin\conda.bat
+    set "CONDA_PATH=%USERPROFILE%\anaconda3\condabin\conda.bat"
+    goto :start_installation
+)
+
+if exist "C:\Users\%USERNAME%\anaconda3\condabin\conda.bat" (
+    echo SUCCESS: Conda found at C:\Users\%USERNAME%\anaconda3\condabin\conda.bat
+    set "CONDA_PATH=C:\Users\%USERNAME%\anaconda3\condabin\conda.bat"
+    goto :start_installation
+)
+
 :: Conda not found - offer to install
 echo WARNING: Conda is not installed.
 echo.
@@ -79,8 +92,8 @@ if not errorlevel 1 (
     goto :activate_env
 )
 
-:: Create environment using simple conda command
-conda create -n edgehd python=3.10 -y
+:: Create environment using simple conda command - Use Python 3.11 for better compatibility
+conda create -n edgehd python=3.11 -y
 if errorlevel 1 (
     echo ERROR: Failed to create Conda environment.
     echo INFO: Please check if conda is properly installed and try again.
@@ -100,10 +113,10 @@ if errorlevel 1 (
     echo NOTE: You may need to manually activate the environment later.
 )
 
-:: Install latest PyTorch (compatible with Real-ESRGAN)
+:: Install Real-ESRGAN compatible PyTorch versions first
 echo.
 echo ========================================
-echo Installing latest PyTorch (Real-ESRGAN compatible)...
+echo Installing PyTorch 2.1.0 (Real-ESRGAN v0.3.0 compatible)...
 echo ========================================
 
 :: Check if ARM64 Windows and handle specially
@@ -132,9 +145,8 @@ if not errorlevel 1 (
     exit /b 1
 )
 
-:: Direct activation and pip installation (most reliable method)
-echo INFO: Installing PyTorch using direct conda activation...
-
+:: Install specific PyTorch versions for Real-ESRGAN compatibility
+echo INFO: Installing PyTorch 2.1.0 for Real-ESRGAN v0.3.0 compatibility...
 call conda activate edgehd
 if errorlevel 1 (
     echo ERROR: Failed to activate conda environment
@@ -142,62 +154,48 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo INFO: Trying default PyPI first (most compatible)...
-pip install torch torchvision torchaudio
+:: Remove any existing PyTorch installations first
+echo INFO: Removing any existing PyTorch installations...
+pip uninstall torch torchvision torchaudio -y >nul 2>&1
+
+:: Install compatible PyTorch versions
+echo INFO: Installing PyTorch 2.1.0, torchvision 0.16.0, torchaudio 2.1.0...
+pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0
 if errorlevel 1 (
-    echo INFO: Default PyPI failed. Trying GPU-specific installation...
+    echo ERROR: Failed to install PyTorch 2.1.0.
+    echo INFO: Trying alternative installation method...
     
+    :: Try CUDA-specific version if available
     nvidia-smi >nul 2>&1
     if errorlevel 1 (
-        echo INFO: NVIDIA GPU not found. Trying CPU-specific index...
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        echo INFO: NVIDIA GPU not found. Installing CPU version...
+        pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
     ) else (
-        echo INFO: NVIDIA GPU detected. Trying CUDA-specific index...
-        pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+        echo INFO: NVIDIA GPU detected. Installing CUDA version...
+        pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
     )
     
     if errorlevel 1 (
         echo ERROR: All PyTorch installation methods failed.
-        echo.
-        echo ========================================
-        echo IMPORTANT: Your system may not be compatible
-        echo ========================================
-        echo Possible issues:
-        echo 1. 32-bit Windows (PyTorch requires 64-bit)
-        echo 2. Very old Windows version
-        echo 3. Network connectivity issues
-        echo.
-        echo Manual troubleshooting:
-        echo 1. Check if you have 64-bit Windows:
-        echo    wmic os get osarchitecture
-        echo.
-        echo 2. If 64-bit, try in new CMD:
-        echo    conda activate edgehd
-        echo    pip install torch torchvision torchaudio
-        echo.
-        echo 3. Check Python version:
-        echo    python --version
-        echo ========================================
+        echo Please check your internet connection and try again.
         pause
         exit /b 1
     )
 )
 
-echo SUCCESS: PyTorch installed successfully.
+echo SUCCESS: PyTorch 2.1.0 installed successfully.
 
-:: Install latest transformers version
+:: Install compatible transformers version
 echo.
 echo ========================================
-echo Installing latest transformers (Real-ESRGAN compatible)...
+echo Installing transformers 4.35.0 (PyTorch 2.1.0 compatible)...
 echo ========================================
-conda run -n edgehd pip install transformers
+pip install transformers==4.35.0
 if errorlevel 1 (
-    echo ERROR: Failed to install transformers.
-    echo INFO: Trying alternative installation method...
-    conda activate edgehd
+    echo WARNING: Failed to install transformers 4.35.0. Installing latest compatible version...
     pip install transformers
     if errorlevel 1 (
-        echo ERROR: All transformers installation methods failed.
+        echo ERROR: Failed to install transformers.
         pause
         exit /b 1
     )
@@ -217,33 +215,92 @@ if not exist models mkdir models
 if not exist models\hub mkdir models\hub
 echo SUCCESS: Directory structure created.
 
-:: Install required packages from requirements.txt (skip PyTorch/transformers)
+:: Install Flask and web framework packages
 echo.
 echo ========================================
-echo Installing other required packages...
+echo Installing Flask and web framework packages...
 echo ========================================
-echo INFO: Skipping PyTorch and transformers (already installed with specific versions)
-conda run -n edgehd pip install Flask==3.0.0 Flask-CORS==4.0.0 werkzeug==3.0.1
-conda run -n edgehd pip install "numpy>=1.24.0,<2.0.0" Pillow>=10.0.0 opencv-python>=4.8.0 requests>=2.31.0
+pip install Flask==3.0.0 Flask-CORS==4.0.0 werkzeug==3.0.1
 if errorlevel 1 (
-    echo ERROR: Failed to install basic packages.
+    echo ERROR: Failed to install Flask packages.
     pause
     exit /b 1
 )
-echo SUCCESS: Basic packages installed.
+echo SUCCESS: Flask packages installed.
+
+:: Install image/video processing packages
+echo.
+echo ========================================
+echo Installing image/video processing packages...
+echo ========================================
+pip install "numpy>=1.24.0,<2.0.0" Pillow>=10.0.0 opencv-python>=4.8.0 requests>=2.31.0
+if errorlevel 1 (
+    echo ERROR: Failed to install image processing packages.
+    pause
+    exit /b 1
+)
+echo SUCCESS: Image/video processing packages installed.
 
 :: Install AI model dependencies
 echo.
 echo ========================================
 echo Installing AI model dependencies...
 echo ========================================
-conda run -n edgehd pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
+pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
 if errorlevel 1 (
     echo ERROR: Failed to install AI model dependencies.
     pause
     exit /b 1
 )
 echo SUCCESS: AI model dependencies installed.
+
+:: Update watchdog for Flask compatibility
+echo.
+echo ========================================
+echo Updating watchdog for Flask compatibility...
+echo ========================================
+pip install --upgrade watchdog
+if errorlevel 1 (
+    echo WARNING: Failed to update watchdog. Flask debug mode may have issues.
+) else (
+    echo SUCCESS: watchdog updated successfully.
+)
+
+:: Test package compatibility
+echo.
+echo ========================================
+echo Testing package compatibility...
+echo ========================================
+python -c "import torch; print('PyTorch version:', torch.__version__)" 2>nul
+if errorlevel 1 (
+    echo ERROR: PyTorch import failed.
+    pause
+    exit /b 1
+)
+
+python -c "import transformers; print('Transformers version:', transformers.__version__)" 2>nul
+if errorlevel 1 (
+    echo ERROR: Transformers import failed.
+    pause
+    exit /b 1
+)
+
+python -c "import realesrgan; print('Real-ESRGAN import successful')" 2>nul
+if errorlevel 1 (
+    echo ERROR: Real-ESRGAN import failed.
+    echo INFO: This may be due to version compatibility issues.
+    pause
+    exit /b 1
+)
+
+python -c "import flask; print('Flask version:', flask.__version__)" 2>nul
+if errorlevel 1 (
+    echo ERROR: Flask import failed.
+    pause
+    exit /b 1
+)
+
+echo SUCCESS: All packages are compatible!
 
 :: Configure project-local model storage
 echo.
@@ -271,8 +328,8 @@ echo Server URL: http://localhost:8080
 echo.
 echo See README.md for detailed usage instructions.
 
-:: Create run script
-echo Creating run script...
+:: Create enhanced run script
+echo Creating enhanced run script...
 (
 echo @echo off
 echo setlocal enabledelayedexpansion
@@ -285,6 +342,8 @@ echo     call conda activate edgehd
 echo ^) else ^(
 echo     if exist "%%USERPROFILE%%\miniconda3\Scripts\activate.bat" ^(
 echo         call "%%USERPROFILE%%\miniconda3\Scripts\activate.bat" edgehd
+echo     ^) else if exist "%%USERPROFILE%%\anaconda3\condabin\conda.bat" ^(
+echo         call "%%USERPROFILE%%\anaconda3\condabin\conda.bat" activate edgehd
 echo     ^) else ^(
 echo         echo ERROR: Conda not found. Please run install.bat first.
 echo         pause
@@ -296,11 +355,12 @@ echo :: Set environment variables for project-local model storage
 echo set HF_HOME=%%cd%%\models
 echo set TRANSFORMERS_CACHE=%%cd%%\models
 echo.
+echo echo INFO: Starting with PyTorch 2.1.0 and Real-ESRGAN v0.3.0 compatibility
 echo python app.py
 echo pause
 ) > run.bat
 
-echo SUCCESS: Run script 'run.bat' created.
+echo SUCCESS: Enhanced run script 'run.bat' created.
 echo    You can now simply double-click 'run.bat' to start the application.
 echo.
 pause

@@ -531,6 +531,98 @@ class VideoProcessor:
             print(f"❌ 프레임 처리 실패: {e}")
             raise
     
+    def extract_last_frame(self, video_path, progress_callback=None):
+        """비디오에서 마지막 프레임 추출"""
+        try:
+            if progress_callback:
+                progress_callback(10, "🎬 비디오 마지막 프레임 추출 중...")
+            
+            # 비디오 파일 존재 확인
+            if not os.path.exists(video_path):
+                raise ValueError(f"비디오 파일이 존재하지 않습니다: {video_path}")
+            
+            file_size = os.path.getsize(video_path)
+            print(f"📂 비디오 파일 확인: {video_path} (크기: {file_size:,} bytes)")
+            
+            if file_size == 0:
+                raise ValueError("비디오 파일이 비어있습니다")
+            
+            if progress_callback:
+                progress_callback(30, "📹 비디오 정보 분석 중...")
+            
+            # 비디오 캡처 객체 생성
+            cap = cv2.VideoCapture(video_path)
+            
+            if not cap.isOpened():
+                raise ValueError(f"비디오 파일을 열 수 없습니다: {video_path}")
+            
+            if progress_callback:
+                progress_callback(50, "🎞️ 마지막 프레임 검색 중...")
+            
+            # 총 프레임 수 가져오기
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            
+            print(f"📹 비디오 정보 - 총 프레임: {total_frames}, FPS: {fps:.2f}, 해상도: {width}x{height}")
+            
+            if total_frames <= 0:
+                raise ValueError("비디오의 프레임 수를 확인할 수 없습니다")
+            
+            # 마지막 프레임으로 이동 (마지막에서 1개 전 프레임을 안전하게 선택)
+            last_frame_index = max(0, total_frames - 2)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, last_frame_index)
+            
+            if progress_callback:
+                progress_callback(70, "🖼️ 마지막 프레임 추출 중...")
+            
+            # 마지막 프레임 읽기
+            ret, frame = cap.read()
+            
+            if not ret or frame is None:
+                # 마지막 프레임 읽기 실패 시 역순으로 프레임 찾기
+                print("⚠️ 마지막 프레임 읽기 실패, 역순으로 유효한 프레임 찾는 중...")
+                for i in range(min(10, total_frames)):  # 최대 10개 프레임 역순으로 확인
+                    frame_index = max(0, total_frames - 3 - i)
+                    cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+                    ret, frame = cap.read()
+                    if ret and frame is not None:
+                        print(f"✅ 유효한 프레임 발견: 인덱스 {frame_index}")
+                        break
+                
+                if not ret or frame is None:
+                    raise ValueError("비디오에서 유효한 마지막 프레임을 찾을 수 없습니다")
+            
+            cap.release()
+            
+            if progress_callback:
+                progress_callback(85, "🎨 이미지 변환 중...")
+            
+            # BGR to RGB 변환
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame_pil = Image.fromarray(frame_rgb)
+            
+            if progress_callback:
+                progress_callback(100, "✅ 마지막 프레임 추출 완료!")
+            
+            print(f"🎉 마지막 프레임 추출 완료 - 해상도: {width}x{height}")
+            
+            return {
+                'frame_image': frame_pil,
+                'width': width,
+                'height': height,
+                'total_frames': total_frames,
+                'fps': fps,
+                'frame_index': last_frame_index
+            }
+            
+        except Exception as e:
+            print(f"❌ 마지막 프레임 추출 실패: {e}")
+            if progress_callback:
+                progress_callback(0, f"❌ 추출 실패: {str(e)}")
+            raise
+
     def reassemble_video(self, processed_files, output_path, fps, width, height, progress_callback=None):
         """처리된 프레임들을 비디오로 재조립 (H.264 코덱 사용)"""
         try:
@@ -1351,6 +1443,133 @@ def download_file(filename):
         print(f"❌ 다운로드 실패: {e}")
         print(f"📍 요청된 파일: {filename}")
         return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+
+@app.route('/extract_last_frame', methods=['POST'])
+def extract_last_frame():
+    """비디오에서 마지막 프레임 추출 및 다운로드"""
+    try:
+        # 세션 ID: 프론트엔드에서 전달된 work_id 사용, 없으면 새로 생성
+        session_id = request.form.get('work_id', str(uuid.uuid4()))
+        
+        # 프로그래스 큐 초기화
+        progress_queues[session_id] = Queue()
+        
+        def progress_callback(progress, message):
+            send_progress(session_id, progress, message)
+            time.sleep(0.1)  # UI 업데이트를 위한 약간의 지연
+        
+        progress_callback(5, "📋 비디오 파일 검증 중...")
+        
+        # 파일 확인
+        if 'file' not in request.files:
+            progress_callback(0, "❌ 비디오 파일이 선택되지 않았습니다.")
+            return jsonify({'error': '비디오 파일이 선택되지 않았습니다.'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            progress_callback(0, "❌ 비디오 파일이 선택되지 않았습니다.")
+            return jsonify({'error': '비디오 파일이 선택되지 않았습니다.'}), 400
+        
+        if not allowed_video_file(file.filename):
+            progress_callback(0, "❌ 지원하지 않는 비디오 형식입니다.")
+            return jsonify({'error': '지원하지 않는 비디오 형식입니다. (mp4, avi, mov, mkv만 지원)'}), 400
+        
+        print(f"🎬 마지막 프레임 추출 시작")
+        print(f"📍 세션 ID: {session_id} (프론트엔드에서 전달: {'work_id' in request.form})")
+        
+        progress_callback(8, "📁 임시 작업 공간 준비 중...")
+        
+        # 임시 디렉토리 생성
+        temp_dir = video_processor.create_temp_dir(session_id)
+        print(f"📁 임시 디렉토리 생성: {temp_dir}")
+        
+        # 비디오 파일 저장
+        video_filename = secure_filename(file.filename)
+        video_path = os.path.join(temp_dir, video_filename)
+        print(f"💾 비디오 파일 저장 중: {video_path}")
+        
+        try:
+            file.save(video_path)
+            saved_size = os.path.getsize(video_path)
+            print(f"✅ 비디오 파일 저장 완료: {saved_size:,} bytes")
+        except Exception as save_error:
+            print(f"❌ 비디오 파일 저장 실패: {save_error}")
+            raise ValueError(f"비디오 파일 저장 실패: {save_error}")
+        
+        # 저장된 파일 검증
+        if not os.path.exists(video_path):
+            raise ValueError("저장된 비디오 파일이 존재하지 않습니다")
+        
+        if os.path.getsize(video_path) == 0:
+            raise ValueError("저장된 비디오 파일이 비어있습니다")
+        
+        try:
+            # 마지막 프레임 추출
+            progress_callback(10, "🎞️ 비디오에서 마지막 프레임 추출 중...")
+            frame_info = video_processor.extract_last_frame(video_path, progress_callback)
+            
+            progress_callback(90, "💾 마지막 프레임 이미지 저장 중...")
+            
+            # 결과 파일명 생성
+            frame_filename = f"last_frame_{session_id[:8]}_{video_filename.rsplit('.', 1)[0]}.png"
+            frame_path = os.path.join(app.config['DOWNLOAD_FOLDER'], frame_filename)
+            
+            # 마지막 프레임을 PNG로 저장
+            frame_info['frame_image'].save(frame_path, 'PNG', optimize=True, compress_level=6)
+            
+            progress_callback(100, "🎉 마지막 프레임 추출 완료!")
+            
+            # 세션 데이터 저장
+            update_session_data(session_id, {
+                'type': 'last_frame',
+                'filename': frame_filename,
+                'original_filename': file.filename,
+                'download_url': url_for('download_file', filename=frame_filename),
+                'frame_info': {
+                    'width': frame_info['width'],
+                    'height': frame_info['height'],
+                    'total_frames': frame_info['total_frames'],
+                    'fps': frame_info['fps'],
+                    'frame_index': frame_info['frame_index']
+                },
+                'completed': True,
+                'timestamp': time.time()
+            })
+            
+            print(f"✅ 마지막 프레임 추출 완료:")
+            print(f"   - 프레임 인덱스: {frame_info['frame_index']}/{frame_info['total_frames']}")
+            print(f"   - 해상도: {frame_info['width']}x{frame_info['height']}")
+            print(f"   - 저장 위치: {frame_path}")
+            
+            return jsonify({
+                'success': True,
+                'download_url': url_for('download_file', filename=frame_filename),
+                'session_id': session_id,
+                'work_id': session_id,  # 프론트엔드에서 URL 변경에 사용
+                'frame_info': {
+                    'width': frame_info['width'],
+                    'height': frame_info['height'],
+                    'total_frames': frame_info['total_frames'],
+                    'fps': frame_info['fps'],
+                    'frame_index': frame_info['frame_index']
+                }
+            })
+            
+        finally:
+            # 임시 파일들 정리 (비동기로 실행)
+            def cleanup():
+                time.sleep(5)  # 5초 대기 후 정리
+                video_processor.cleanup_temp_dir(session_id)
+            
+            cleanup_thread = threading.Thread(target=cleanup)
+            cleanup_thread.daemon = True
+            cleanup_thread.start()
+        
+    except Exception as e:
+        print(f"❌ 마지막 프레임 추출 실패: {e}")
+        if session_id in progress_queues:
+            send_progress(session_id, 0, f"❌ 오류: {str(e)}")
+        return jsonify({'error': f'마지막 프레임 추출 중 오류가 발생했습니다: {str(e)}'}), 500
 
 @app.route('/reset', methods=['POST'])
 @app.route('/reset/<work_id>', methods=['POST'])

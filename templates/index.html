@@ -1014,6 +1014,15 @@
 
           <div class="action-buttons" id="leftVideoActionButtons">
             <button
+              class="btn"
+              onclick="extractLastFrame()"
+              style="
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+              "
+            >
+              📸 마지막 프레임 추출
+            </button>
+            <button
               class="btn background-remove"
               onclick="showBackgroundColorPopup('remove_bg')"
             >
@@ -1745,6 +1754,112 @@
         }
 
         console.log("✅ hideVideoProcessingStatus 완료");
+      }
+
+      // 마지막 프레임 추출 함수
+      function extractLastFrame() {
+        console.log("📸 extractLastFrame 호출됨");
+
+        if (!currentVideoFile) {
+          showMessage("비디오 파일을 먼저 선택해주세요.", "error");
+          return;
+        }
+
+        // 처리 시작 전에 우측 패널 표시
+        showVideoProcessingStatus();
+
+        // 처리 메시지 업데이트
+        if (processingMainMessage) {
+          processingMainMessage.textContent =
+            "📸 마지막 프레임을 추출하고 있습니다!";
+        }
+        if (processingTipMessage) {
+          processingTipMessage.textContent = "잠시만 기다려주세요 ✨";
+        }
+
+        // 처리 버튼들 비활성화
+        const actionButtons = leftVideoActionButtons.querySelectorAll(".btn");
+        actionButtons.forEach((btn) => (btn.disabled = true));
+
+        const formData = new FormData();
+        formData.append("file", currentVideoFile);
+        // 프론트엔드에서 생성한 work_id 전달
+        if (workId) {
+          formData.append("work_id", workId);
+        }
+
+        console.log("📤 마지막 프레임 추출 요청 전송:", {
+          fileSize: currentVideoFile.size,
+          fileName: currentVideoFile.name,
+          workId: workId,
+        });
+
+        fetch("/extract_last_frame", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            // 처리 버튼들 재활성화
+            actionButtons.forEach((btn) => (btn.disabled = false));
+
+            if (data.success) {
+              // 프로그래스 스트림 연결
+              connectToProgressStream(data.session_id);
+
+              // 완료 처리 시뮬레이션 (프로그래스가 100%가 되면 완료)
+              setTimeout(() => {
+                handleLastFrameComplete(data);
+              }, 2000);
+            } else {
+              showMessage(
+                data.error || "마지막 프레임 추출 중 오류가 발생했습니다.",
+                "error"
+              );
+              hideVideoProcessingStatus();
+            }
+          })
+          .catch((error) => {
+            // 처리 버튼들 재활성화
+            actionButtons.forEach((btn) => (btn.disabled = false));
+            console.error("Error:", error);
+            showMessage("네트워크 오류가 발생했습니다.", "error");
+            hideVideoProcessingStatus();
+          });
+      }
+
+      // 마지막 프레임 추출 완료 처리
+      function handleLastFrameComplete(data) {
+        console.log("🎉 마지막 프레임 추출 완료:", data);
+
+        // 처리 완료 처리
+        hideVideoProcessingStatus();
+
+        // 우측 패널에 결과 이미지 표시
+        rightPanel.classList.add("visible");
+        emptyState.classList.add("hide");
+        rightImageArea.classList.add("visible");
+        videoStatusArea.classList.remove("visible");
+        mainContainer.classList.remove("upload-only");
+
+        // 추출된 프레임 이미지 표시
+        rightImage.src = data.download_url;
+        rightImageLabel.textContent = `마지막 프레임 (${
+          data.frame_info.frame_index + 1
+        }/${data.frame_info.total_frames}) ✨`;
+
+        // 다운로드 URL 설정
+        currentDownloadUrl = data.download_url;
+        setupDownloadButton();
+
+        // 프레임 정보 표시
+        const frameInfo = data.frame_info;
+        console.log("📹 프레임 정보:", frameInfo);
+
+        showMessage(
+          `📸 마지막 프레임이 성공적으로 추출되었습니다! (${frameInfo.width}x${frameInfo.height})`,
+          "success"
+        );
       }
 
       // 새로운 비디오 처리 시작 함수
@@ -2862,6 +2977,38 @@
             console.log("📹 비디오 상태 복원 완료:", {
               filename: workData.filename,
               processing_info: workData.processing_info,
+              download_url: workData.download_url,
+            });
+          } else if (workData.completed && workData.type === "last_frame") {
+            // 완료된 마지막 프레임 추출 작업 복원
+            currentMode = "video";
+            switchMode("video");
+
+            // UI 상태 설정
+            videoUploadArea.style.display = "none";
+            rightPanel.classList.add("visible");
+            rightImageArea.classList.add("visible");
+            emptyState.classList.add("hide");
+            videoStatusArea.classList.remove("visible");
+            mainContainer.classList.remove("upload-only");
+
+            // 추출된 프레임 이미지 표시
+            rightImage.src = workData.download_url;
+            if (workData.frame_info) {
+              rightImageLabel.textContent = `마지막 프레임 (${
+                workData.frame_info.frame_index + 1
+              }/${workData.frame_info.total_frames}) ✨`;
+            } else {
+              rightImageLabel.textContent = "마지막 프레임 ✨";
+            }
+
+            // 다운로드 URL 설정
+            currentDownloadUrl = workData.download_url;
+            setupDownloadButton();
+
+            console.log("📸 마지막 프레임 추출 상태 복원 완료:", {
+              filename: workData.filename,
+              frame_info: workData.frame_info,
               download_url: workData.download_url,
             });
           }

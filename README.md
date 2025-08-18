@@ -13,6 +13,7 @@
 ### 🎬 비디오 처리 (NEW!)
 
 - **🎞️ 프레임별 AI 처리**: MP4/AVI/MOV/MKV 비디오를 프레임별로 분해하여 처리
+- **📸 마지막 프레임 추출**: 비디오에서 마지막 프레임을 이미지로 추출 및 다운로드 (NEW!)
 - **🎭 비디오 배경 제거**: 각 프레임에 고품질 AI 배경 제거 적용
 - **🔍 비디오 업스케일링**: Real-ESRGAN General v3 4x 비디오 해상도 향상 (v0.3.0)
 - **🎪 조합 처리**: 배경제거 + 4x 업스케일링 동시 적용
@@ -44,6 +45,8 @@
 - **운영체제**: Windows 10/11, macOS 10.14+, Linux (Ubuntu 18.04+)
 
 ## 🚀 설치 가이드
+
+> **🆕 기존 사용자**: [업데이트 방법](#-기존-설치자-업데이트-권장)을 확인하여 새로운 **📸 마지막 프레임 추출** 기능을 사용해보세요!
 
 ### 1. Conda 설치
 
@@ -172,6 +175,106 @@ How to run:
    python app.py
 
 Server URL: http://localhost:8080
+```
+
+### 🔄 기존 설치자 업데이트 (권장)
+
+**📸 마지막 프레임 추출** 등 새로운 기능이 추가되었습니다! 기존 설치를 간단히 업데이트할 수 있습니다:
+
+#### 🚀 간편 업데이트 (권장)
+
+**Linux/macOS**:
+
+```bash
+# Git으로 최신 버전 받기
+git pull origin main
+
+# 의존성 업데이트 (새로운 패키지가 있는 경우)
+conda activate edgehd
+pip install -r requirements.txt --upgrade
+
+# 서버 재시작
+./stop.sh && ./start.sh
+```
+
+**Windows**:
+
+```cmd
+:: Git으로 최신 버전 받기
+git pull origin main
+
+:: 의존성 업데이트 (새로운 패키지가 있는 경우)
+conda activate edgehd
+pip install -r requirements.txt --upgrade
+
+:: 서버 재시작
+stop.bat && start.bat
+```
+
+#### 🔄 자동 업데이트 (Git이 없는 경우)
+
+**Linux/macOS**:
+
+```bash
+# 기존 폴더 백업 (중요한 파일이 있는 경우)
+cp -r EdgeHD EdgeHD_backup
+
+# 새 버전 다운로드
+wget https://github.com/mastergear4824/EdgeHD/archive/main.zip
+unzip main.zip
+cp -r EdgeHD-main/* EdgeHD/
+rm -rf EdgeHD-main main.zip
+
+# 업데이트 적용
+cd EdgeHD
+./install.sh  # 환경은 유지하고 새 기능만 추가
+```
+
+**Windows**:
+
+```cmd
+:: 기존 폴더 백업 (중요한 파일이 있는 경우)
+xcopy EdgeHD EdgeHD_backup /E /I
+
+:: 새 버전 다운로드 (PowerShell 사용)
+powershell -Command "Invoke-WebRequest -Uri 'https://github.com/mastergear4824/EdgeHD/archive/main.zip' -OutFile 'main.zip'"
+powershell -Command "Expand-Archive -Path 'main.zip' -DestinationPath '.'"
+xcopy EdgeHD-main\* EdgeHD\ /E /Y
+rmdir /S /Q EdgeHD-main
+del main.zip
+
+:: 업데이트 적용
+cd EdgeHD
+install.bat
+```
+
+#### 📋 업데이트 확인 방법
+
+업데이트가 완료되면 다음을 확인하세요:
+
+```bash
+# 서버 실행 후 웹 브라우저에서 확인
+# http://localhost:8080
+
+# 새로운 기능 확인:
+# 1. 비디오 모드로 전환
+# 2. 비디오 업로드
+# 3. "📸 마지막 프레임 추출" 버튼 확인
+```
+
+#### ⚠️ 업데이트 문제 해결
+
+업데이트 중 문제가 발생한 경우:
+
+```bash
+# 1. 기존 환경 정리 후 새로 설치
+./uninstall.sh && ./install.sh  # Linux/macOS
+# 또는
+uninstall.bat && install.bat     # Windows
+
+# 2. 백업에서 중요 파일 복원 (필요한 경우)
+cp EdgeHD_backup/downloads/* EdgeHD/downloads/  # Linux/macOS
+xcopy EdgeHD_backup\downloads\* EdgeHD\downloads\ /Y  # Windows
 ```
 
 ### 🗑️ 환경 완전 정리 (문제 해결용)
@@ -325,6 +428,9 @@ python app.py
 ### 원라인 실행 명령어
 
 ```bash
+# 최신 버전 업데이트 후 실행 (기존 사용자 권장)
+git pull origin main && conda activate edgehd && pip install -r requirements.txt --upgrade && ./stop.sh && ./start.sh
+
 # 완전 재설치 후 실행 (문제 해결용)
 ./uninstall.sh && ./install.sh && ./start.sh
 
@@ -377,6 +483,7 @@ cd /path/to/EdgeHD && conda activate edgehd && export PYTORCH_ENABLE_MPS_FALLBAC
 
 2. **처리 옵션 선택**:
 
+   - `📸 마지막 프레임 추출`: 비디오의 마지막 프레임을 PNG 이미지로 추출
    - `배경 제거`: 각 프레임에 BiRefNet AI 배경 제거 적용
    - `4x 업스케일`: Real-ESRGAN General v3으로 비디오 해상도를 4배로 향상
    - `배경제거 + 4x`: 배경 제거와 4배 업스케일 동시 적용
@@ -390,9 +497,35 @@ cd /path/to/EdgeHD && conda activate edgehd && export PYTORCH_ENABLE_MPS_FALLBAC
    - 전체 진행률 바 표시
 
 4. **결과 다운로드**:
-   - 처리 완료 후 MP4 파일 다운로드
+   - **마지막 프레임 추출**: PNG 이미지 파일 다운로드 (원본 해상도 유지)
+   - **비디오 처리**: 처리 완료 후 MP4 파일 다운로드
    - 원본 FPS 유지
    - 처리 옵션에 따른 해상도 조정
+
+### 📸 마지막 프레임 추출 기능 (NEW!)
+
+비디오에서 마지막 프레임을 이미지로 추출하는 새로운 기능이 추가되었습니다!
+
+#### 주요 특징
+
+- **🎯 정확한 추출**: 비디오의 마지막 유효한 프레임을 안전하게 추출
+- **📸 고품질 이미지**: 원본 해상도 유지로 PNG 형식 저장
+- **⚡ 빠른 처리**: 전체 비디오 처리 없이 마지막 프레임만 추출
+- **🛡️ 안전한 처리**: 손상된 프레임 감지 시 자동으로 이전 유효 프레임 선택
+
+#### 사용법
+
+1. 비디오 파일 업로드 (MP4, AVI, MOV, MKV)
+2. "📸 마지막 프레임 추출" 버튼 클릭
+3. 처리 완료 후 우측 패널에서 결과 확인
+4. PNG 이미지로 다운로드
+
+#### 활용 사례
+
+- 비디오 썸네일 생성
+- 영상 종료 화면 캡처
+- 스크린샷 추출
+- 콘텐츠 미리보기 생성
 
 ### 📁 지원 형식
 
@@ -404,7 +537,9 @@ cd /path/to/EdgeHD && conda activate edgehd && export PYTORCH_ENABLE_MPS_FALLBAC
 #### 비디오
 
 - **입력**: MP4, AVI, MOV, MKV
-- **출력**: MP4 (H.264 코덱)
+- **출력**:
+  - **비디오 처리**: MP4 (H.264 코덱)
+  - **마지막 프레임 추출**: PNG (원본 해상도)
 
 ## ⚡ 성능 최적화
 
@@ -596,14 +731,20 @@ dir *.log
 ```
 EdgeHD/
 ├── app.py                 # 메인 Flask 애플리케이션
+│                         # • /upload (이미지 배경 제거)
+│                         # • /upscale (이미지 업스케일링)
+│                         # • /process_video (비디오 프레임별 처리)
+│                         # • /extract_last_frame (마지막 프레임 추출) NEW!
+│                         # • /download/<filename> (파일 다운로드)
 ├── models/               # 🤖 AI 모델 저장소 (프로젝트 독립)
 │   └── hub/             # Hugging Face 모델 캐시
 │       └── models--zhengpeng7--BiRefNet/  # 배경 제거 모델 (~424MB)
 ├── templates/            # HTML 템플릿
+│   └── index.html       # 메인 웹 인터페이스 (마지막 프레임 추출 UI 포함)
 ├── static/              # 정적 파일 (CSS, JS)
 ├── uploads/             # 업로드된 파일
-├── downloads/           # 처리된 결과 파일
-├── temp/               # 임시 처리 파일
+├── downloads/           # 처리된 결과 파일 (이미지, 비디오, 추출된 프레임)
+├── temp/               # 임시 처리 파일 (비디오 프레임 분해용)
 ├── requirements.txt     # Python 의존성 (PyTorch 2.1.0, transformers 4.35.0)
 ├── install.sh          # Linux/macOS 설치 스크립트
 ├── install.bat         # Windows 설치 스크립트
@@ -774,6 +915,7 @@ python app.py
 
 - 🖼️ **이미지 처리**: 고품질 AI 배경 제거 및 업스케일링
 - 🎬 **비디오 처리**: 프레임별 AI 처리 및 재조립
+- 📸 **마지막 프레임 추출**: 비디오에서 마지막 프레임을 이미지로 빠르게 추출 (NEW!)
 - 🖥️ **크로스 플랫폼**: Windows, macOS, Linux 완벽 지원
 - ⚡ **실시간 진행률**: 처리 상태 실시간 확인
 - 🚀 **간편 설치**: 원클릭 설치 스크립트 제공

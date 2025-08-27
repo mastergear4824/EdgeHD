@@ -1,0 +1,29 @@
+{
+  "name": "edgehd",
+  "version": "2.0.0",
+  "description": "AI-powered image and video processing platform",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && python app.py",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd backend && python app.py",
+    "start:frontend": "cd frontend && npm start",
+    "install:all": "cd backend && pip install -r requirements.txt && cd ../frontend && npm install",
+    "setup": "npm run install:all"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "ai",
+    "image-processing",
+    "video-processing",
+    "background-removal",
+    "upscaling",
+    "vectorization"
+  ],
+  "author": "EdgeHD Team",
+  "license": "MIT"
+}

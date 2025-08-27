@@ -1,94 +1,174 @@
 #!/bin/bash
 
-# AI 이미지 처리 도구 시작 스크립트
-# 사용법: ./start.sh
+BACKEND_PID_FILE="backend.pid"
+FRONTEND_PID_FILE="frontend.pid"
+BACKEND_LOG="backend.log"
+FRONTEND_LOG="frontend.log"
+BACKEND_ERROR_LOG="backend_error.log"
+FRONTEND_ERROR_LOG="frontend_error.log"
 
-PID_FILE="app.pid"
-LOG_FILE="app.log"
-ERROR_LOG="app_error.log"
+echo "========================================"
+echo "EdgeHD 2.0 - Full-Stack Platform"
+echo "Starting Background Services"
+echo "========================================"
+echo
 
-echo "🚀 AI 이미지 처리 도구 시작 중..."
-
-# 이미 실행 중인지 확인
-if [ -f "$PID_FILE" ]; then
-    PID=$(cat "$PID_FILE")
-    if kill -0 "$PID" 2>/dev/null; then
-        echo "❌ 이미 실행 중입니다 (PID: $PID)"
-        echo "   중지하려면: ./stop.sh"
+# Check if already running
+if [ -f "$BACKEND_PID_FILE" ]; then
+    BACKEND_PID=$(cat "$BACKEND_PID_FILE")
+    if kill -0 "$BACKEND_PID" 2>/dev/null; then
+        echo "❌ Backend already running (PID: $BACKEND_PID)"
+        echo "   To stop: ./stop.sh"
         exit 1
     else
-        echo "🧹 오래된 PID 파일 정리 중..."
-        rm -f "$PID_FILE"
+        echo "🧹 Cleaning up old backend PID file..."
+        rm -f "$BACKEND_PID_FILE"
     fi
 fi
 
-# Conda 환경 확인
+if [ -f "$FRONTEND_PID_FILE" ]; then
+    FRONTEND_PID=$(cat "$FRONTEND_PID_FILE")
+    if kill -0 "$FRONTEND_PID" 2>/dev/null; then
+        echo "❌ Frontend already running (PID: $FRONTEND_PID)"
+        echo "   To stop: ./stop.sh"
+        exit 1
+    else
+        echo "🧹 Cleaning up old frontend PID file..."
+        rm -f "$FRONTEND_PID_FILE"
+    fi
+fi
+
+echo "[1/4] Checking environments..."
+
+# Check Conda
 if ! command -v conda &> /dev/null; then
-    echo "❌ Conda가 설치되어 있지 않습니다."
-    echo "   설치 후 다시 시도해주세요."
+    echo "❌ Conda not found. Please run ./install.sh first."
     exit 1
 fi
 
-# Conda 환경 활성화
-echo "🔧 Conda 환경 'edgehd' 활성화 중..."
 source "$(conda info --base)/etc/profile.d/conda.sh"
-
 if ! conda activate edgehd 2>/dev/null; then
-    echo "❌ 'edgehd' 환경을 찾을 수 없습니다."
-    echo "   먼저 ./install.sh를 실행해주세요."
+    echo "❌ 'edgehd' environment not found. Please run ./install.sh first."
     exit 1
 fi
 
-# Apple Silicon 환경변수 설정
+# Check Node.js
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js not found. Please run ./install.sh first."
+    exit 1
+fi
+
+echo "✅ All environments ready."
+
+echo "[2/4] Initializing log files..."
+> "$BACKEND_LOG"
+> "$FRONTEND_LOG"
+> "$BACKEND_ERROR_LOG"
+> "$FRONTEND_ERROR_LOG"
+
+echo "[3/4] Starting backend server..."
+
+# Apple Silicon environment variables
 if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
     export PYTORCH_ENABLE_MPS_FALLBACK=1
-    echo "🍎 Apple Silicon 최적화 설정 완료"
 fi
 
-# 프로젝트 내 모델 저장 환경변수 설정
-export HF_HOME="$(pwd)/models"
-export TRANSFORMERS_CACHE="$(pwd)/models"
-echo "🤖 AI 모델을 프로젝트 내에서 관리합니다 ($(pwd)/models)"
+# Project-local model storage environment variables
+export HF_HOME="$(pwd)/backend/models"
+export TRANSFORMERS_CACHE="$(pwd)/backend/models"
+export HUGGINGFACE_HUB_CACHE="$(pwd)/backend/models"
 
-# 로그 파일 초기화
-echo "📝 로그 파일 초기화 중..."
-> "$LOG_FILE"
-> "$ERROR_LOG"
+# Start backend in background
+cd backend
+nohup python app.py > "../$BACKEND_LOG" 2> "../$BACKEND_ERROR_LOG" &
+BACKEND_PID=$!
+cd ..
 
-# 백그라운드에서 실행
-echo "▶️  서버를 백그라운드에서 시작합니다..."
-nohup python app.py > "$LOG_FILE" 2> "$ERROR_LOG" &
-PID=$!
+# Save backend PID
+echo "$BACKEND_PID" > "$BACKEND_PID_FILE"
 
-# PID 저장
-echo "$PID" > "$PID_FILE"
-
-# 서버 시작 대기
-echo "⏳ 서버 초기화 대기 중..."
+# Wait for backend initialization
 sleep 3
 
-# 프로세스 확인
-if kill -0 "$PID" 2>/dev/null; then
-    echo ""
-    echo "✅ AI 이미지 처리 도구가 성공적으로 시작되었습니다!"
-    echo ""
-    echo "📊 서버 정보:"
-    echo "   • PID: $PID"
-    echo "   • 로그 파일: $LOG_FILE"
-    echo "   • 에러 로그: $ERROR_LOG"
-    echo ""
-    echo "🌐 접속 주소:"
-    echo "   • 로컬: http://localhost:8080"
-    echo "   • 네트워크: http://$(hostname -I | awk '{print $1}'):8080"
-    echo ""
-    echo "📝 유용한 명령어:"
-    echo "   • 상태 확인: ./status.sh"
-    echo "   • 로그 보기: tail -f $LOG_FILE"
-    echo "   • 서버 중지: ./stop.sh"
-    echo ""
-else
-    echo "❌ 서버 시작에 실패했습니다."
-    echo "   에러 로그를 확인해주세요: cat $ERROR_LOG"
-    rm -f "$PID_FILE"
+# Verify backend is running
+if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+    echo "❌ Failed to start backend server."
+    if [ -f "$BACKEND_ERROR_LOG" ]; then
+        echo "Backend error log:"
+        cat "$BACKEND_ERROR_LOG"
+    fi
+    rm -f "$BACKEND_PID_FILE"
     exit 1
-fi 
+fi
+
+echo "✅ Backend started (PID: $BACKEND_PID)"
+
+echo "[4/4] Starting frontend server..."
+
+# Build and start frontend
+cd frontend
+npm run build > "../$FRONTEND_LOG" 2> "../$FRONTEND_ERROR_LOG"
+if [ $? -ne 0 ]; then
+    echo "❌ Frontend build failed."
+    cat "../$FRONTEND_ERROR_LOG"
+    exit 1
+fi
+
+nohup npm start >> "../$FRONTEND_LOG" 2>> "../$FRONTEND_ERROR_LOG" &
+FRONTEND_PID=$!
+cd ..
+
+# Save frontend PID
+echo "$FRONTEND_PID" > "$FRONTEND_PID_FILE"
+
+# Wait for frontend initialization
+sleep 5
+
+# Verify frontend is running
+if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    echo "❌ Failed to start frontend server."
+    if [ -f "$FRONTEND_ERROR_LOG" ]; then
+        echo "Frontend error log:"
+        cat "$FRONTEND_ERROR_LOG"
+    fi
+    rm -f "$FRONTEND_PID_FILE"
+    exit 1
+fi
+
+echo "✅ Frontend started (PID: $FRONTEND_PID)"
+
+# Final verification
+sleep 2
+
+echo
+echo "🎉 EdgeHD 2.0 Full-Stack Platform started successfully!"
+echo
+echo "📊 SERVER INFO:"
+echo "   • Backend PID: $BACKEND_PID (Python/Flask)"
+echo "   • Frontend PID: $FRONTEND_PID (Node.js/Next.js)"
+echo "   • Backend Log: $BACKEND_LOG"
+echo "   • Frontend Log: $FRONTEND_LOG"
+echo
+echo "🌐 ACCESS URLs:"
+echo "   • Frontend UI: http://localhost:3000"
+echo "   • Backend API: http://localhost:8080"
+if command -v hostname &> /dev/null; then
+    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [ -n "$LOCAL_IP" ]; then
+        echo "   • Network: http://$LOCAL_IP:3000"
+    fi
+fi
+echo
+echo "🔧 USEFUL COMMANDS:"
+echo "   • Check status: ./status.sh"
+echo "   • View backend logs: tail -f $BACKEND_LOG"
+echo "   • View frontend logs: tail -f $FRONTEND_LOG"
+echo "   • Stop servers: ./stop.sh"
+echo
+echo "🎨 FEATURES:"
+echo "   • Modern React UI with shadcn/ui components"
+echo "   • AI-powered image processing (background removal, upscaling)"
+echo "   • Real-time progress tracking"
+echo "   • Drag & drop file uploads"
+echo "   • Video processing capabilities"
+echo

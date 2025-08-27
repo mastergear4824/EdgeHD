@@ -1,20 +1,71 @@
 #!/bin/bash
-# AI 이미지 처리 도구 실행 스크립트
 
-echo "🚀 AI 이미지 처리 도구를 시작합니다..."
+echo "========================================"
+echo "EdgeHD 2.0 - Full-Stack Platform"
+echo "Starting Backend + Frontend Servers"
+echo "========================================"
+echo
 
-# Conda 환경 활성화
+echo "[1/3] Checking backend environment..."
+
+# Check if conda environment exists
+if ! command -v conda &> /dev/null; then
+    echo "❌ Conda not found."
+    echo "   Please run ./install.sh first."
+    exit 1
+fi
+
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate edgehd
+if ! conda activate edgehd 2>/dev/null; then
+    echo "❌ 'edgehd' conda environment not found."
+    echo "   Please run ./install.sh first."
+    exit 1
+fi
 
-# Apple Silicon 환경변수 설정
+echo "✅ Conda environment 'edgehd' found."
+
+echo "[2/3] Checking frontend environment..."
+
+# Check if Node.js dependencies are installed
+if [ ! -d "frontend/node_modules" ]; then
+    echo "❌ Frontend dependencies not found."
+    echo "   Please run ./install.sh first."
+    exit 1
+fi
+
+if [ ! -d "node_modules" ]; then
+    echo "❌ Root dependencies not found."
+    echo "   Please run ./install.sh first."
+    exit 1
+fi
+
+echo "✅ Frontend environment ready."
+
+echo "[3/3] Activating environment and starting servers..."
+
+# Apple Silicon environment variables
 if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
     export PYTORCH_ENABLE_MPS_FALLBACK=1
 fi
 
-# 프로젝트 내 모델 저장 환경변수 설정
-export HF_HOME="$(pwd)/models"
-export TRANSFORMERS_CACHE="$(pwd)/models"
+# Project-local model storage environment variables
+export HF_HOME="$(pwd)/backend/models"
+export TRANSFORMERS_CACHE="$(pwd)/backend/models"
+export HUGGINGFACE_HUB_CACHE="$(pwd)/backend/models"
 
-# 애플리케이션 실행
-python app.py
+echo
+echo "🔧 ENVIRONMENT CONFIGURED:"
+echo "   • Backend: Python $(python --version 2>&1 | cut -d' ' -f2) + PyTorch (conda: edgehd)"
+echo "   • Frontend: Node.js $(node --version)"
+echo "   • AI Models: $(pwd)/backend/models"
+echo
+
+echo "🚀 STARTING SERVERS:"
+echo "   • Backend API: http://localhost:8080"
+echo "   • Frontend UI: http://localhost:3000"
+echo
+echo "Press Ctrl+C to stop both servers."
+echo
+
+# Start both servers using concurrently
+npm run dev

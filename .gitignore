@@ -1,11 +1,20 @@
-# AI 이미지 처리 도구 .gitignore
+# EdgeHD 2.0 Full-Stack Platform .gitignore
 
 # 서버 관리 파일
 app.pid
+backend.pid
+frontend.pid
 *.log
 nohup.out
 
-# 업로드/다운로드 파일
+# 업로드/다운로드 파일 (백엔드)
+backend/uploads/*
+backend/downloads/*
+backend/temp/*
+!backend/uploads/.gitkeep
+!backend/downloads/.gitkeep
+
+# 레거시 업로드/다운로드 파일
 uploads/*
 downloads/*
 temp/*
@@ -13,6 +22,7 @@ temp/*
 !downloads/.gitkeep
 
 # AI 모델 파일들 (용량이 크므로 제외)
+backend/models/
 models/
 *.safetensors
 *.bin
@@ -187,6 +197,24 @@ $RECYCLE.BIN/
 .cache/
 models/
 ~/.cache/huggingface/
+
+# Node.js (루트 및 프론트엔드)
+node_modules/
+frontend/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+package-lock.json
+frontend/package-lock.json
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/.env.local
+frontend/.env.development
+frontend/.env.production
 
 # 개발용 파일
 test_images/

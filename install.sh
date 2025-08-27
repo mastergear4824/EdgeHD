@@ -1,15 +1,22 @@
 #!/bin/bash
 
-# AI 이미지/비디오 처리 도구 자동 설치 스크립트
-# 사용법: chmod +x install.sh && ./install.sh
+# EdgeHD 2.0 - AI Image/Video Processing Platform
+# Full-Stack Installation Script (Backend + Frontend)
+# Usage: chmod +x install.sh && ./install.sh
 
-# Miniconda 설치 함수
+echo "========================================"
+echo "EdgeHD 2.0 - AI Image/Video Processing Platform"
+echo "Full-Stack Installation (Backend + Frontend)"
+echo "========================================"
+echo
+
+# Miniconda installation function
 install_miniconda() {
     echo ""
     echo "Downloading Miniconda3 installer..."
     echo "This may take a few minutes depending on your internet connection."
     
-    # 아키텍처 및 OS별 설치 파일 결정
+    # Architecture and OS-specific installer determination
     case "$OS" in
         Darwin*)
             if [[ "$ARCH" == "arm64" ]]; then
@@ -35,7 +42,7 @@ install_miniconda() {
             ;;
     esac
     
-    # 다운로드
+    # Download
     if command -v curl &> /dev/null; then
         curl -L -o "/tmp/$INSTALLER_NAME" "$INSTALLER_URL"
     elif command -v wget &> /dev/null; then
@@ -56,20 +63,20 @@ install_miniconda() {
     echo "This will install to: $HOME/miniconda3"
     echo ""
     
-    # 무인 설치 실행
+    # Silent installation
     bash "/tmp/$INSTALLER_NAME" -b -p "$HOME/miniconda3"
     if [ $? -ne 0 ]; then
         echo "ERROR: Miniconda installation failed."
         return 1
     fi
     
-    # 설치 파일 정리
+    # Clean up installer
     rm -f "/tmp/$INSTALLER_NAME"
     
-    # PATH 설정
+    # PATH setup
     export PATH="$HOME/miniconda3/bin:$PATH"
     
-    # conda 초기화
+    # conda initialization
     "$HOME/miniconda3/bin/conda" init bash >/dev/null 2>&1
     "$HOME/miniconda3/bin/conda" init zsh >/dev/null 2>&1
     
@@ -82,13 +89,57 @@ install_miniconda() {
     return 0
 }
 
-echo "Starting AI Image/Video Processing Tool Installation..."
-
-# 운영체제 및 아키텍처 감지
+# OS and architecture detection
 OS="$(uname -s)"
 ARCH="$(uname -m)"
 
-# Conda 설치 확인
+echo "[1/5] Checking Node.js installation..."
+
+# Check Node.js installation
+if ! command -v node &> /dev/null; then
+    echo "ERROR: Node.js is not installed."
+    echo ""
+    echo "Please install Node.js first:"
+    case "$OS" in
+        Darwin*)
+            echo "   # macOS"
+            echo "   brew install node"
+            echo "   # Or download from: https://nodejs.org/"
+            ;;
+        Linux*)
+            echo "   # Ubuntu/Debian"
+            echo "   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -"
+            echo "   sudo apt-get install -y nodejs"
+            echo ""
+            echo "   # CentOS/RHEL/Fedora"
+            echo "   curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -"
+            echo "   sudo yum install -y nodejs"
+            echo ""
+            echo "   # Or download from: https://nodejs.org/"
+            ;;
+    esac
+    echo ""
+    echo "After installation, restart terminal and run this script again."
+    exit 1
+else
+    NODE_VERSION=$(node --version)
+    echo "SUCCESS: Node.js $NODE_VERSION found"
+fi
+
+# Check npm
+if ! command -v npm &> /dev/null; then
+    echo "ERROR: npm is not available."
+    exit 1
+else
+    NPM_VERSION=$(npm --version)
+    echo "SUCCESS: npm $NPM_VERSION found"
+fi
+
+echo
+
+echo "[2/5] Checking Python/Conda installation..."
+
+# Check Conda installation
 if ! command -v conda &> /dev/null; then
     echo "WARNING: Conda is not installed."
     echo ""
@@ -134,23 +185,26 @@ fi
 
 echo "SUCCESS: Conda is installed."
 
-# Conda 환경 생성
-echo "Creating Conda environment 'edgehd'..."
-conda create -n edgehd python=3.10 -y
+echo
+echo "[3/5] Setting up backend environment..."
 
-# 환경 활성화
+# Create Conda environment
+echo "Creating Conda environment 'edgehd'..."
+conda create -n edgehd python=3.11 -y
+
+# Activate environment
 echo "Activating Conda environment..."
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate edgehd
 
-# PyTorch 설치 (시스템별)
+# Install PyTorch (system-specific)
 echo "Installing PyTorch 2.1.0 (Real-ESRGAN v0.3.0 compatible)..."
 case "$OS" in
     Darwin*)
         if [[ "$ARCH" == "arm64" ]]; then
             echo "Apple Silicon detected - Installing MPS-enabled PyTorch 2.1.0"
             pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0
-            # Apple Silicon 환경변수 설정
+            # Apple Silicon environment variables
             export PYTORCH_ENABLE_MPS_FALLBACK=1
             echo 'export PYTORCH_ENABLE_MPS_FALLBACK=1' >> ~/.zshrc
             echo "SUCCESS: Apple Silicon optimization completed"
@@ -175,30 +229,71 @@ case "$OS" in
         ;;
 esac
 
-# transformers 호환 버전 설치
+# Install transformers compatible version
 echo "Installing transformers 4.35.0 (PyTorch 2.1.0 compatible)..."
 pip install transformers==4.35.0
 
-# 프로젝트 디렉토리 구조 생성
-echo "Creating project directory structure..."
-mkdir -p uploads downloads temp models/hub
+# Install backend dependencies
+echo "Installing backend dependencies..."
+if [ ! -f "backend/requirements.txt" ]; then
+    echo "ERROR: Backend requirements.txt not found."
+    echo "Please ensure you're running this from the EdgeHD root directory."
+    exit 1
+fi
 
-# 필수 패키지 설치
-echo "Installing required packages..."
+cd backend
 pip install -r requirements.txt
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install backend dependencies."
+    exit 1
+fi
+cd ..
 
-# AI 모델 추가 의존성
-echo "Installing AI model dependencies..."
-pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
+echo "SUCCESS: Backend environment setup completed."
 
-# 프로젝트 내 모델 저장 설정
+echo
+echo "[4/5] Setting up frontend environment..."
+
+# Install frontend dependencies
+if [ ! -f "frontend/package.json" ]; then
+    echo "ERROR: Frontend package.json not found."
+    echo "Please ensure you're running this from the EdgeHD root directory."
+    exit 1
+fi
+
+cd frontend
+echo "Installing Node.js packages..."
+npm install
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install frontend dependencies."
+    exit 1
+fi
+cd ..
+
+echo "SUCCESS: Frontend environment setup completed."
+
+echo
+echo "[5/5] Installing root dependencies..."
+
+# Install root dependencies (concurrently)
+echo "Installing concurrently for running both servers..."
+npm install
+if [ $? -ne 0 ]; then
+    echo "ERROR: Failed to install root dependencies."
+    exit 1
+fi
+
+echo "SUCCESS: Root dependencies installed."
+
+# Configure project-local model storage
+echo
 echo "Configuring AI models..."
 
 # Set environment variables for project-local model storage
 echo "INFO: Setting up project-local model storage..."
-export HF_HOME="$(pwd)/models"
-export TRANSFORMERS_CACHE="$(pwd)/models" 
-export HUGGINGFACE_HUB_CACHE="$(pwd)/models"
+export HF_HOME="$(pwd)/backend/models"
+export TRANSFORMERS_CACHE="$(pwd)/backend/models" 
+export HUGGINGFACE_HUB_CACHE="$(pwd)/backend/models"
 
 # Test environment variables
 echo "INFO: Project-local model storage configured:"
@@ -206,57 +301,78 @@ echo "   HF_HOME=$HF_HOME"
 echo "   TRANSFORMERS_CACHE=$TRANSFORMERS_CACHE"
 echo "   HUGGINGFACE_HUB_CACHE=$HUGGINGFACE_HUB_CACHE"
 
-echo "   All AI models will be stored in project models/ directory"
+echo "   All AI models will be stored in backend/models/ directory"
 echo "   AI models downloaded on first run:"
 echo "      * BiRefNet background removal model (~424MB)"
 echo "      * Real-ESRGAN General v3 4x upscaling model (~17MB)"
-echo "      * v0.3.0 supports only 4x (no 2x dedicated model)"
 echo "   Models are managed independently per project"
-echo "   WARNING: Never stored in system cache (~/.cache/huggingface/)"
 
 echo ""
-echo "Installation completed successfully!"
+echo "========================================"
+echo "    INSTALLATION COMPLETED SUCCESSFULLY!"
+echo "========================================"
 echo ""
-echo "How to run:"
-echo "   conda activate edgehd"
-
-if [[ "$OS" == "Darwin" && "$ARCH" == "arm64" ]]; then
-    echo "   export PYTORCH_ENABLE_MPS_FALLBACK=1  # Apple Silicon only"
-fi
-
-echo "   python app.py"
+echo "EdgeHD 2.0 Full-Stack Platform is ready!"
 echo ""
-echo "Server URL: http://localhost:8080"
+echo "ARCHITECTURE:"
+echo "   * Backend:  Flask API server (Python 3.11 + PyTorch 2.1.0)"
+echo "   * Frontend: Next.js + shadcn/ui (Node.js + React)"
+echo "   * Database: File-based storage"
+echo "   * AI Models: BiRefNet + Real-ESRGAN"
+echo ""
+echo "HOW TO RUN:"
+echo "   npm run dev          - Start both servers (development)"
+echo "   npm run dev:backend  - Start backend only (http://localhost:8080)"
+echo "   npm run dev:frontend - Start frontend only (http://localhost:3000)"
+echo ""
+echo "PRODUCTION:"
+echo "   npm run build        - Build frontend for production"
+echo "   npm run start        - Start both servers (production)"
+echo ""
+echo "ACCESS URLS:"
+echo "   * Frontend UI: http://localhost:3000"
+echo "   * Backend API: http://localhost:8080"
 echo ""
 echo "See README.md for detailed usage instructions."
 
-# 실행 스크립트 생성
+# Create run script
 echo "Creating run script..."
 cat > run.sh << 'EOF'
 #!/bin/bash
-# AI 이미지/비디오 처리 도구 실행 스크립트
+# EdgeHD 2.0 - Full-Stack Run Script
 
-echo "Starting AI Image/Video Processing Tool..."
+echo "🚀 Starting EdgeHD 2.0 Full-Stack Platform..."
 
-# Conda 환경 활성화
+# Check if conda environment exists
 source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate edgehd
+if ! conda activate edgehd 2>/dev/null; then
+    echo "❌ 'edgehd' environment not found."
+    echo "   Please run ./install.sh first."
+    exit 1
+fi
 
-# Apple Silicon 환경변수 설정
+# Apple Silicon environment variables
 if [[ "$(uname -s)" == "Darwin" && "$(uname -m)" == "arm64" ]]; then
     export PYTORCH_ENABLE_MPS_FALLBACK=1
 fi
 
-# 프로젝트 내 모델 저장 환경변수 설정
-export HF_HOME="$(pwd)/models"
-export TRANSFORMERS_CACHE="$(pwd)/models"
-export HUGGINGFACE_HUB_CACHE="$(pwd)/models"
+# Project-local model storage environment variables
+export HF_HOME="$(pwd)/backend/models"
+export TRANSFORMERS_CACHE="$(pwd)/backend/models"
+export HUGGINGFACE_HUB_CACHE="$(pwd)/backend/models"
 
-# 애플리케이션 실행
-python app.py
+echo "🔧 Environment configured:"
+echo "   • Backend: Python $(python --version 2>&1 | cut -d' ' -f2) + PyTorch"
+echo "   • Frontend: Node.js $(node --version)"
+echo "   • AI Models: $(pwd)/backend/models"
+echo ""
+
+# Run both servers
+echo "▶️  Starting both servers..."
+npm run dev
 EOF
 
 chmod +x run.sh
 
 echo "SUCCESS: Run script 'run.sh' created"
-echo "   You can now run './run.sh' for easy startup." 
+echo "   You can now run './run.sh' or 'npm run dev' for easy startup."

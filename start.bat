@@ -1,257 +1,216 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set PID_FILE=app.pid
-set LOG_FILE=app.log
-set ERROR_LOG=app_error.log
+set BACKEND_PID_FILE=backend.pid
+set FRONTEND_PID_FILE=frontend.pid
+set BACKEND_LOG=backend.log
+set FRONTEND_LOG=frontend.log
+set BACKEND_ERROR_LOG=backend_error.log
+set FRONTEND_ERROR_LOG=frontend_error.log
 
-echo Starting AI Image/Video Processing Tool...
+echo ========================================
+echo EdgeHD 2.0 - Full-Stack Platform
+echo Starting Background Services
+echo ========================================
+echo.
 
 :: Check if already running
-if exist "%PID_FILE%" (
-    set /p PID=<"%PID_FILE%"
-    tasklist /FI "PID eq !PID!" 2>nul | find "!PID!" >nul
+if exist "%BACKEND_PID_FILE%" (
+    set /p BACKEND_PID=<"%BACKEND_PID_FILE%"
+    tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
     if not errorlevel 1 (
-        echo ERROR: Already running (PID: !PID!)
+        echo ERROR: Backend already running (PID: !BACKEND_PID!)
         echo    To stop: stop.bat
         pause
         exit /b 1
     ) else (
-        echo INFO: Cleaning up old PID file...
-        del "%PID_FILE%" 2>nul
+        echo INFO: Cleaning up old backend PID file...
+        del "%BACKEND_PID_FILE%" 2>nul
     )
 )
 
-:: Check Conda installation and find correct path
-echo INFO: Checking for Conda installation...
-where conda >nul 2>&1
-if not errorlevel 1 (
-    echo SUCCESS: Conda found in PATH
-    set "CONDA_FOUND=1"
-    goto :check_environment
-)
-
-:: Check common Conda paths
-if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
-    echo SUCCESS: Conda found at %USERPROFILE%\miniconda3\Scripts\conda.exe
-    set "PATH=%USERPROFILE%\miniconda3;%USERPROFILE%\miniconda3\Scripts;%USERPROFILE%\miniconda3\Library\bin;%PATH%"
-    set "CONDA_FOUND=1"
-    goto :check_environment
-)
-
-if exist "%USERPROFILE%\anaconda3\condabin\conda.bat" (
-    echo SUCCESS: Conda found at %USERPROFILE%\anaconda3\condabin\conda.bat
-    set "PATH=%USERPROFILE%\anaconda3;%USERPROFILE%\anaconda3\Scripts;%USERPROFILE%\anaconda3\condabin;%PATH%"
-    set "CONDA_FOUND=1"
-    goto :check_environment
-)
-
-if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" (
-    echo SUCCESS: Conda found at C:\ProgramData\Miniconda3\Scripts\conda.exe
-    set "PATH=C:\ProgramData\Miniconda3;C:\ProgramData\Miniconda3\Scripts;C:\ProgramData\Miniconda3\Library\bin;%PATH%"
-    set "CONDA_FOUND=1"
-    goto :check_environment
-)
-
-if not defined CONDA_FOUND (
-    echo ERROR: Conda is not installed.
-    echo    Please run install.bat first to install conda and the environment.
-    pause
-    exit /b 1
-)
-
-:check_environment
-:: Check Conda environment
-echo INFO: Checking Conda environment 'edgehd'...
-conda info --envs | find "edgehd" >nul
-if errorlevel 1 (
-    echo ERROR: 'edgehd' environment not found.
-    echo    Please run install.bat first.
-    pause
-    exit /b 1
-)
-
-echo INFO: Activating Conda environment...
-call conda activate edgehd
-if errorlevel 1 (
-    echo ERROR: Failed to activate Conda environment.
-    echo INFO: Trying alternative activation method...
-    
-    :: Try alternative activation for Anaconda
-    if exist "%USERPROFILE%\anaconda3\condabin\conda.bat" (
-        call "%USERPROFILE%\anaconda3\condabin\conda.bat" activate edgehd
-        if errorlevel 1 (
-            echo ERROR: All activation methods failed.
-            pause
-            exit /b 1
-        )
-    ) else (
-        echo ERROR: Could not activate environment.
+if exist "%FRONTEND_PID_FILE%" (
+    set /p FRONTEND_PID=<"%FRONTEND_PID_FILE%"
+    tasklist /FI "PID eq !FRONTEND_PID!" 2>nul | find "!FRONTEND_PID!" >nul
+    if not errorlevel 1 (
+        echo ERROR: Frontend already running (PID: !FRONTEND_PID!)
+        echo    To stop: stop.bat
         pause
         exit /b 1
+    ) else (
+        echo INFO: Cleaning up old frontend PID file...
+        del "%FRONTEND_PID_FILE%" 2>nul
     )
 )
 
-echo SUCCESS: Environment 'edgehd' activated successfully.
+:: Check environments
+echo [1/4] Checking environments...
+where conda >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Conda not found. Please run install.bat first.
+    pause
+    exit /b 1
+)
 
-:: Set environment variables for project-local model storage
-set "HF_HOME=%cd%\models"
-set "TRANSFORMERS_CACHE=%cd%\models"
-echo INFO: AI models will be managed in project directory (%cd%\models)
+conda info --envs | findstr "edgehd" >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: 'edgehd' environment not found. Please run install.bat first.
+    pause
+    exit /b 1
+)
+
+node --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Node.js not found. Please run install.bat first.
+    pause
+    exit /b 1
+)
+
+echo SUCCESS: All environments ready.
 
 :: Initialize log files
-echo INFO: Initializing log files...
-echo. > "%LOG_FILE%"
-echo. > "%ERROR_LOG%"
+echo [2/4] Initializing log files...
+echo. > "%BACKEND_LOG%"
+echo. > "%FRONTEND_LOG%"
+echo. > "%BACKEND_ERROR_LOG%"
+echo. > "%FRONTEND_ERROR_LOG%"
 
-:: Test Python and packages before starting
-echo INFO: Testing Python and packages...
-python --version >nul 2>&1
+:: Start backend server
+echo [3/4] Starting backend server...
+call conda activate edgehd
 if errorlevel 1 (
-    echo ERROR: Python not available in conda environment.
-    echo    Please check your installation.
+    echo ERROR: Failed to activate conda environment.
     pause
     exit /b 1
 )
 
-python -c "import flask" >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Flask not installed.
-    echo    Please run install.bat again.
-    pause
-    exit /b 1
-)
+:: Set environment variables for backend
+set "HF_HOME=%cd%\backend\models"
+set "TRANSFORMERS_CACHE=%cd%\backend\models"
+set "HUGGINGFACE_HUB_CACHE=%cd%\backend\models"
 
-echo SUCCESS: Python and packages are ready.
+:: Create backend startup script
+echo @echo off > temp_backend.bat
+echo call conda activate edgehd >> temp_backend.bat
+echo set "HF_HOME=%cd%\backend\models" >> temp_backend.bat
+echo set "TRANSFORMERS_CACHE=%cd%\backend\models" >> temp_backend.bat
+echo set "HUGGINGFACE_HUB_CACHE=%cd%\backend\models" >> temp_backend.bat
+echo cd backend >> temp_backend.bat
+echo python app.py >> temp_backend.bat
 
-:: Start server in background
-echo INFO: Starting server in background...
+:: Start backend in background
+start /B cmd /c "temp_backend.bat 1>%BACKEND_LOG% 2>%BACKEND_ERROR_LOG%"
 
-:: Create a temporary batch file to run python with proper conda environment
-echo @echo off > temp_start.bat
-echo call conda activate edgehd >> temp_start.bat
-echo set "HF_HOME=%cd%\models" >> temp_start.bat
-echo set "TRANSFORMERS_CACHE=%cd%\models" >> temp_start.bat
-echo python app.py >> temp_start.bat
-
-:: Run the temporary batch file in background and capture output
-start /B cmd /c "temp_start.bat 1>%LOG_FILE% 2>%ERROR_LOG%"
-
-:: Clean up temporary file
-timeout /t 1 >nul
-del temp_start.bat >nul 2>&1
-
-:: Wait for server initialization
-echo INFO: Waiting for server initialization...
-timeout /t 5 >nul
-
-:: Find Python process with more specific criteria
-set PID=
-for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2^>nul') do (
-    set "TEMP_PID=%%~a"
-    :: Remove quotes if present
-    set "TEMP_PID=!TEMP_PID:"=!"
-    
-    :: Check if this process is actually running our app by checking port usage
-    netstat -ano | find "8080" | find "!TEMP_PID!" >nul 2>&1
-    if not errorlevel 1 (
-        set "PID=!TEMP_PID!"
-        goto :found_pid
-    )
-)
-
-:: If port-based search failed, try most recent python process
-for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2^>nul') do (
-    set "PID=%%~a"
-    set "PID=!PID:"=!"
-    goto :found_pid
-)
-
-:found_pid
-if not defined PID (
-    echo ERROR: Failed to start server.
-    echo INFO: Checking error log for details...
-    if exist "%ERROR_LOG%" (
-        echo.
-        echo ERROR LOG CONTENTS:
-        type "%ERROR_LOG%"
-    )
-    echo.
-    echo    Check error log: type %ERROR_LOG%
-    pause
-    exit /b 1
-)
-
-echo %PID% > "%PID_FILE%"
-
-:: Wait a bit more for full initialization
+:: Wait for backend initialization
 timeout /t 3 >nul
 
-:: Verify server is responding on port 8080
-echo INFO: Verifying server is responding...
-netstat -an | find "8080" | find "LISTENING" >nul 2>&1
-if errorlevel 1 (
-    echo WARNING: Port 8080 not found in listening state.
-    echo INFO: Server might still be initializing...
-    timeout /t 3 >nul
+:: Find backend Python process
+set BACKEND_PID=
+for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2^>nul') do (
+    set "TEMP_PID=%%~a"
+    set "TEMP_PID=!TEMP_PID:"=!"
     
-    :: Check again
-    netstat -an | find "8080" | find "LISTENING" >nul 2>&1
-    if errorlevel 1 (
-        echo ERROR: Server failed to bind to port 8080.
-        echo INFO: Checking error log...
-        if exist "%ERROR_LOG%" (
-            echo.
-            echo ERROR LOG CONTENTS:
-            type "%ERROR_LOG%"
-        )
-        
-        :: Clean up PID file
-        if exist "%PID_FILE%" del "%PID_FILE%"
-        pause
-        exit /b 1
+    :: Check if this process is using port 8080
+    netstat -ano | find "8080" | find "!TEMP_PID!" >nul 2>&1
+    if not errorlevel 1 (
+        set "BACKEND_PID=!TEMP_PID!"
+        goto :backend_found
     )
 )
 
-:: Verify process is still running
-tasklist /FI "PID eq %PID%" 2>nul | find "%PID%" >nul
-if not errorlevel 1 (
-    echo.
-    echo SUCCESS: AI Image/Video Processing Tool started successfully!
-    echo.
-    echo SERVER INFO:
-    echo    * PID: %PID%
-    echo    * Log file: %LOG_FILE%
-    echo    * Error log: %ERROR_LOG%
-    echo    * Python version: 3.11 with PyTorch 2.1.0
-    echo    * Real-ESRGAN: v0.3.0 compatible
-    echo.
-    echo ACCESS URLs:
-    echo    * Local: http://localhost:8080
-    echo    * Network: http://^<computer-ip^>:8080
-    echo.
-    echo USEFUL COMMANDS:
-    echo    * Check status: status.bat
-    echo    * View logs: type %LOG_FILE%
-    echo    * Stop server: stop.bat
-    echo.
-    echo FEATURES:
-    echo    * Image processing: Background removal, 4x upscaling
-    echo    * Video processing: Frame-by-frame processing + upscaling
-    echo    * Real-time progress display
-    echo    * Compatible PyTorch 2.1.0 + Real-ESRGAN v0.3.0
-    echo.
-) else (
-    echo ERROR: Server process died unexpectedly.
-    echo INFO: Checking error log...
-    if exist "%ERROR_LOG%" (
-        echo.
-        echo ERROR LOG CONTENTS:
-        type "%ERROR_LOG%"
+:backend_found
+if not defined BACKEND_PID (
+    echo ERROR: Failed to start backend server.
+    if exist "%BACKEND_ERROR_LOG%" (
+        echo Backend error log:
+        type "%BACKEND_ERROR_LOG%"
     )
-    if exist "%PID_FILE%" del "%PID_FILE%"
     pause
     exit /b 1
 )
 
-pause 
+echo %BACKEND_PID% > "%BACKEND_PID_FILE%"
+echo SUCCESS: Backend started (PID: %BACKEND_PID%)
+
+:: Start frontend server
+echo [4/4] Starting frontend server...
+cd frontend
+
+:: Create frontend startup script
+echo @echo off > ..\temp_frontend.bat
+echo cd frontend >> ..\temp_frontend.bat
+echo npm run build >> ..\temp_frontend.bat
+echo npm start >> ..\temp_frontend.bat
+
+:: Start frontend in background
+start /B cmd /c "..\temp_frontend.bat 1>..\%FRONTEND_LOG% 2>..\%FRONTEND_ERROR_LOG%"
+
+:: Wait for frontend initialization
+timeout /t 5 >nul
+
+:: Find frontend Node process
+set FRONTEND_PID=
+for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq node.exe" /FO CSV /NH 2^>nul') do (
+    set "TEMP_PID=%%~a"
+    set "TEMP_PID=!TEMP_PID:"=!"
+    
+    :: Check if this process is using port 3000
+    netstat -ano | find "3000" | find "!TEMP_PID!" >nul 2>&1
+    if not errorlevel 1 (
+        set "FRONTEND_PID=!TEMP_PID!"
+        goto :frontend_found
+    )
+)
+
+:frontend_found
+if not defined FRONTEND_PID (
+    echo ERROR: Failed to start frontend server.
+    if exist "%FRONTEND_ERROR_LOG%" (
+        echo Frontend error log:
+        type "%FRONTEND_ERROR_LOG%"
+    )
+    pause
+    exit /b 1
+)
+
+echo %FRONTEND_PID% > "%FRONTEND_PID_FILE%"
+echo SUCCESS: Frontend started (PID: %FRONTEND_PID%)
+
+cd ..
+
+:: Clean up temporary files
+del temp_backend.bat >nul 2>&1
+del temp_frontend.bat >nul 2>&1
+
+:: Verify both servers are running
+timeout /t 2 >nul
+
+echo.
+echo SUCCESS: EdgeHD 2.0 Full-Stack Platform started successfully!
+echo.
+echo SERVER INFO:
+echo    * Backend PID: %BACKEND_PID% (Python/Flask)
+echo    * Frontend PID: %FRONTEND_PID% (Node.js/Next.js)
+echo    * Backend Log: %BACKEND_LOG%
+echo    * Frontend Log: %FRONTEND_LOG%
+echo.
+echo ACCESS URLs:
+echo    * Frontend UI: http://localhost:3000
+echo    * Backend API: http://localhost:8080
+echo    * Network: http://^<computer-ip^>:3000
+echo.
+echo USEFUL COMMANDS:
+echo    * Check status: status.bat
+echo    * View backend logs: type %BACKEND_LOG%
+echo    * View frontend logs: type %FRONTEND_LOG%
+echo    * Stop servers: stop.bat
+echo.
+echo FEATURES:
+echo    * Modern React UI with shadcn/ui components
+echo    * AI-powered image processing (background removal, upscaling)
+echo    * Real-time progress tracking
+echo    * Drag & drop file uploads
+echo    * Video processing capabilities
+echo.
+
+pause

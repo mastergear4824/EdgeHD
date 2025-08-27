@@ -1,87 +1,182 @@
 #!/bin/bash
 
-# AI 이미지 처리 도구 중지 스크립트
-# 사용법: ./stop.sh
+BACKEND_PID_FILE="backend.pid"
+FRONTEND_PID_FILE="frontend.pid"
+BACKEND_LOG="backend.log"
+FRONTEND_LOG="frontend.log"
+BACKEND_ERROR_LOG="backend_error.log"
+FRONTEND_ERROR_LOG="frontend_error.log"
 
-PID_FILE="app.pid"
-LOG_FILE="app.log"
-ERROR_LOG="app_error.log"
+echo "========================================"
+echo "EdgeHD 2.0 Full-Stack Platform"
+echo "Stopping Backend + Frontend Servers"
+echo "========================================"
+echo
 
-echo "🛑 AI 이미지 처리 도구 중지 중..."
+BACKEND_STOPPED=false
+FRONTEND_STOPPED=false
 
-# PID 파일 확인
-if [ ! -f "$PID_FILE" ]; then
-    echo "❌ 실행 중인 서버를 찾을 수 없습니다."
-    echo "   PID 파일이 존재하지 않습니다: $PID_FILE"
-    exit 1
-fi
-
-# PID 읽기
-PID=$(cat "$PID_FILE")
-
-# 프로세스 확인
-if ! kill -0 "$PID" 2>/dev/null; then
-    echo "❌ 프로세스 $PID가 실행 중이지 않습니다."
-    echo "🧹 PID 파일 정리 중..."
-    rm -f "$PID_FILE"
-    exit 1
-fi
-
-echo "📋 서버 정보:"
-echo "   • PID: $PID"
-echo "   • 프로세스 확인: $(ps -p $PID -o comm= 2>/dev/null || echo '프로세스 없음')"
-
-# 정상 종료 시도 (SIGTERM)
-echo "⏳ 정상 종료 신호 전송 중... (SIGTERM)"
-kill -TERM "$PID"
-
-# 정상 종료 대기
-WAIT_TIME=10
-for i in $(seq 1 $WAIT_TIME); do
-    if ! kill -0 "$PID" 2>/dev/null; then
-        echo "✅ 서버가 정상적으로 종료되었습니다."
-        rm -f "$PID_FILE"
+# Stop backend server
+echo "[1/2] Stopping backend server..."
+if [ ! -f "$BACKEND_PID_FILE" ]; then
+    echo "ℹ️  Backend PID file not found. Backend may not be running."
+    BACKEND_STOPPED=true
+else
+    BACKEND_PID=$(cat "$BACKEND_PID_FILE")
+    
+    if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+        echo "ℹ️  Backend process $BACKEND_PID not found. Cleaning up PID file."
+        rm -f "$BACKEND_PID_FILE"
+        BACKEND_STOPPED=true
+    else
+        echo "🛑 Stopping backend process $BACKEND_PID..."
         
-        # 로그 파일 정리 옵션
-        echo ""
-        echo "📁 로그 파일 정리:"
-        echo "   • 로그 파일: $LOG_FILE ($(du -h $LOG_FILE 2>/dev/null | cut -f1 || echo '0B'))"
-        echo "   • 에러 로그: $ERROR_LOG ($(du -h $ERROR_LOG 2>/dev/null | cut -f1 || echo '0B'))"
-        echo ""
-        read -p "로그 파일을 삭제하시겠습니까? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -f "$LOG_FILE" "$ERROR_LOG"
-            echo "🗑️  로그 파일이 삭제되었습니다."
-        else
-            echo "📄 로그 파일이 보존되었습니다."
+        # Attempt graceful shutdown (SIGTERM)
+        kill -TERM "$BACKEND_PID"
+        
+        # Wait for graceful shutdown
+        for i in $(seq 1 5); do
+            if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+                echo "✅ Backend stopped gracefully."
+                rm -f "$BACKEND_PID_FILE"
+                BACKEND_STOPPED=true
+                break
+            fi
+            sleep 1
+        done
+        
+        # Force shutdown if graceful failed
+        if [ "$BACKEND_STOPPED" = false ]; then
+            echo "⚠️  Graceful shutdown timed out. Force stopping..."
+            kill -KILL "$BACKEND_PID" 2>/dev/null
+            sleep 2
+            if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+                echo "✅ Backend force stopped."
+                rm -f "$BACKEND_PID_FILE"
+                BACKEND_STOPPED=true
+            else
+                echo "❌ Failed to stop backend process $BACKEND_PID."
+            fi
         fi
+    fi
+fi
+
+# Stop frontend server
+echo "[2/2] Stopping frontend server..."
+if [ ! -f "$FRONTEND_PID_FILE" ]; then
+    echo "ℹ️  Frontend PID file not found. Frontend may not be running."
+    FRONTEND_STOPPED=true
+else
+    FRONTEND_PID=$(cat "$FRONTEND_PID_FILE")
+    
+    if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+        echo "ℹ️  Frontend process $FRONTEND_PID not found. Cleaning up PID file."
+        rm -f "$FRONTEND_PID_FILE"
+        FRONTEND_STOPPED=true
+    else
+        echo "🛑 Stopping frontend process $FRONTEND_PID..."
         
-        echo ""
-        echo "🎯 서버 중지 완료!"
-        exit 0
+        # Attempt graceful shutdown (SIGTERM)
+        kill -TERM "$FRONTEND_PID"
+        
+        # Wait for graceful shutdown
+        for i in $(seq 1 5); do
+            if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+                echo "✅ Frontend stopped gracefully."
+                rm -f "$FRONTEND_PID_FILE"
+                FRONTEND_STOPPED=true
+                break
+            fi
+            sleep 1
+        done
+        
+        # Force shutdown if graceful failed
+        if [ "$FRONTEND_STOPPED" = false ]; then
+            echo "⚠️  Graceful shutdown timed out. Force stopping..."
+            kill -KILL "$FRONTEND_PID" 2>/dev/null
+            sleep 2
+            if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+                echo "✅ Frontend force stopped."
+                rm -f "$FRONTEND_PID_FILE"
+                FRONTEND_STOPPED=true
+            else
+                echo "❌ Failed to stop frontend process $FRONTEND_PID."
+            fi
+        fi
+    fi
+fi
+
+# Verify ports are freed
+echo
+echo "🔍 Verifying ports are freed..."
+sleep 2
+
+if command -v lsof &> /dev/null; then
+    if lsof -i :8080 2>/dev/null | grep -q LISTEN; then
+        echo "⚠️  Port 8080 is still in use by another process."
+    else
+        echo "✅ Port 8080 (backend) is now free."
     fi
     
-    printf "   대기 중... (%d/%d초)\r" "$i" "$WAIT_TIME"
-    sleep 1
-done
+    if lsof -i :3000 2>/dev/null | grep -q LISTEN; then
+        echo "⚠️  Port 3000 is still in use by another process."
+    else
+        echo "✅ Port 3000 (frontend) is now free."
+    fi
+fi
 
-echo ""
-echo "⚠️  정상 종료에 실패했습니다. 강제 종료를 시도합니다..."
-
-# 강제 종료 시도 (SIGKILL)
-echo "💥 강제 종료 신호 전송 중... (SIGKILL)"
-kill -KILL "$PID" 2>/dev/null
-
-# 강제 종료 확인
-sleep 2
-if ! kill -0 "$PID" 2>/dev/null; then
-    echo "✅ 서버가 강제로 종료되었습니다."
-    rm -f "$PID_FILE"
-    echo "🎯 서버 중지 완료!"
+# Log file cleanup option
+echo
+echo "📁 LOG FILE CLEANUP:"
+if [ -f "$BACKEND_LOG" ]; then
+    BACKEND_LOG_SIZE=$(du -h "$BACKEND_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    echo "   • Backend log: $BACKEND_LOG ($BACKEND_LOG_SIZE)"
 else
-    echo "❌ 프로세스 종료에 실패했습니다."
-    echo "   수동으로 종료해야 할 수 있습니다: kill -9 $PID"
-    echo "   또는 시스템 관리자에게 문의하세요."
-    exit 1
-fi 
+    echo "   • Backend log: $BACKEND_LOG (File not found)"
+fi
+
+if [ -f "$FRONTEND_LOG" ]; then
+    FRONTEND_LOG_SIZE=$(du -h "$FRONTEND_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    echo "   • Frontend log: $FRONTEND_LOG ($FRONTEND_LOG_SIZE)"
+else
+    echo "   • Frontend log: $FRONTEND_LOG (File not found)"
+fi
+
+# Show error logs if they have content
+if [ -f "$BACKEND_ERROR_LOG" ] && [ -s "$BACKEND_ERROR_LOG" ]; then
+    BACKEND_ERROR_SIZE=$(du -h "$BACKEND_ERROR_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    echo "   • Backend errors: $BACKEND_ERROR_LOG ($BACKEND_ERROR_SIZE)"
+    echo
+    echo "🚨 BACKEND ERROR LOG PREVIEW (last 5 lines):"
+    tail -5 "$BACKEND_ERROR_LOG"
+fi
+
+if [ -f "$FRONTEND_ERROR_LOG" ] && [ -s "$FRONTEND_ERROR_LOG" ]; then
+    FRONTEND_ERROR_SIZE=$(du -h "$FRONTEND_ERROR_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    echo "   • Frontend errors: $FRONTEND_ERROR_LOG ($FRONTEND_ERROR_SIZE)"
+    echo
+    echo "🚨 FRONTEND ERROR LOG PREVIEW (last 5 lines):"
+    tail -5 "$FRONTEND_ERROR_LOG"
+fi
+
+echo
+read -p "Delete log files? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    rm -f "$BACKEND_LOG" "$FRONTEND_LOG" "$BACKEND_ERROR_LOG" "$FRONTEND_ERROR_LOG"
+    echo "🗑️  Log files deleted."
+else
+    echo "📄 Log files preserved."
+fi
+
+echo
+if [ "$BACKEND_STOPPED" = true ] && [ "$FRONTEND_STOPPED" = true ]; then
+    echo "🎉 SUCCESS: EdgeHD 2.0 Full-Stack Platform stopped successfully!"
+else
+    echo "⚠️  WARNING: Some servers may not have stopped properly."
+    echo "Please check the status manually or restart your computer if needed."
+fi
+
+echo
+echo "🔄 To restart the platform, run: ./start.sh"
+echo "🚀 For development mode, run: ./run.sh or npm run dev"

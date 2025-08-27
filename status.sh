@@ -1,121 +1,182 @@
 #!/bin/bash
 
-# AI 이미지 처리 도구 상태 확인 스크립트
-# 사용법: ./status.sh
+BACKEND_PID_FILE="backend.pid"
+FRONTEND_PID_FILE="frontend.pid"
+BACKEND_LOG="backend.log"
+FRONTEND_LOG="frontend.log"
+BACKEND_ERROR_LOG="backend_error.log"
+FRONTEND_ERROR_LOG="frontend_error.log"
 
-PID_FILE="app.pid"
-LOG_FILE="app.log"
-ERROR_LOG="app_error.log"
+echo "========================================"
+echo "EdgeHD 2.0 Full-Stack Platform Status"
+echo "========================================"
+echo
 
-echo "📊 AI 이미지 처리 도구 상태 확인"
-echo "=================================="
-
-# PID 파일 확인
-if [ ! -f "$PID_FILE" ]; then
-    echo "❌ 서버가 실행되지 않고 있습니다."
-    echo "   시작하려면: ./start.sh"
-    echo ""
-    exit 1
-fi
-
-# PID 읽기
-PID=$(cat "$PID_FILE")
-
-# 프로세스 확인
-if ! kill -0 "$PID" 2>/dev/null; then
-    echo "❌ 서버가 실행되지 않고 있습니다. (PID 파일은 존재)"
-    echo "   PID $PID 프로세스를 찾을 수 없습니다."
-    echo "   정리하려면: rm -f $PID_FILE"
-    echo "   시작하려면: ./start.sh"
-    echo ""
-    exit 1
-fi
-
-# 서버 상태 표시
-echo "✅ 서버가 정상적으로 실행 중입니다!"
-echo ""
-
-# 기본 정보
-echo "📋 서버 정보:"
-echo "   • PID: $PID"
-echo "   • 프로세스 이름: $(ps -p $PID -o comm= 2>/dev/null || echo '알 수 없음')"
-echo "   • 실행 시간: $(ps -p $PID -o etime= 2>/dev/null | xargs || echo '알 수 없음')"
-echo "   • CPU 사용률: $(ps -p $PID -o %cpu= 2>/dev/null | xargs || echo '알 수 없음')%"
-echo "   • 메모리 사용률: $(ps -p $PID -o %mem= 2>/dev/null | xargs || echo '알 수 없음')%"
-echo ""
-
-# 포트 확인
-echo "🌐 네트워크 정보:"
-if command -v lsof &> /dev/null; then
-    PORT_INFO=$(lsof -p "$PID" -a -i 2>/dev/null | grep LISTEN)
-    if [ -n "$PORT_INFO" ]; then
-        echo "   • 사용 중인 포트:"
-        echo "$PORT_INFO" | while read line; do
-            PORT=$(echo "$line" | awk '{print $9}' | cut -d':' -f2)
-            echo "     - 포트 $PORT"
-        done
+# Check backend status
+echo "🔧 [BACKEND STATUS]"
+if [ ! -f "$BACKEND_PID_FILE" ]; then
+    echo "❌ Backend is not running."
+    echo "   Backend PID file not found: $BACKEND_PID_FILE"
+    BACKEND_RUNNING=false
+else
+    BACKEND_PID=$(cat "$BACKEND_PID_FILE")
+    if ! kill -0 "$BACKEND_PID" 2>/dev/null; then
+        echo "❌ Backend is not running. (PID file exists)"
+        echo "   Cannot find PID $BACKEND_PID process."
+        BACKEND_RUNNING=false
     else
-        echo "   • 포트 정보를 찾을 수 없습니다."
+        echo "✅ Backend is running normally!"
+        echo "   • PID: $BACKEND_PID"
+        echo "   • Process: $(ps -p $BACKEND_PID -o comm= 2>/dev/null || echo 'Unknown')"
+        echo "   • Runtime: $(ps -p $BACKEND_PID -o etime= 2>/dev/null | xargs || echo 'Unknown')"
+        echo "   • CPU: $(ps -p $BACKEND_PID -o %cpu= 2>/dev/null | xargs || echo 'Unknown')%"
+        echo "   • Memory: $(ps -p $BACKEND_PID -o %mem= 2>/dev/null | xargs || echo 'Unknown')%"
+        
+        # Check port 8080
+        if command -v lsof &> /dev/null; then
+            if lsof -p "$BACKEND_PID" -a -i :8080 2>/dev/null | grep -q LISTEN; then
+                echo "   • Port 8080: Active (LISTENING)"
+                echo "   • API URL: http://localhost:8080"
+            else
+                echo "   • Port 8080: Inactive (may be starting)"
+            fi
+        fi
+        
+        BACKEND_RUNNING=true
     fi
-else
-    echo "   • lsof 명령어를 사용할 수 없습니다."
 fi
 
-# 접속 URL
-echo "   • 로컬 접속: http://localhost:8080"
-if command -v hostname &> /dev/null; then
-    LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    if [ -n "$LOCAL_IP" ]; then
-        echo "   • 네트워크 접속: http://$LOCAL_IP:8080"
+echo
+
+# Check frontend status
+echo "🎨 [FRONTEND STATUS]"
+if [ ! -f "$FRONTEND_PID_FILE" ]; then
+    echo "❌ Frontend is not running."
+    echo "   Frontend PID file not found: $FRONTEND_PID_FILE"
+    FRONTEND_RUNNING=false
+else
+    FRONTEND_PID=$(cat "$FRONTEND_PID_FILE")
+    if ! kill -0 "$FRONTEND_PID" 2>/dev/null; then
+        echo "❌ Frontend is not running. (PID file exists)"
+        echo "   Cannot find PID $FRONTEND_PID process."
+        FRONTEND_RUNNING=false
+    else
+        echo "✅ Frontend is running normally!"
+        echo "   • PID: $FRONTEND_PID"
+        echo "   • Process: $(ps -p $FRONTEND_PID -o comm= 2>/dev/null || echo 'Unknown')"
+        echo "   • Runtime: $(ps -p $FRONTEND_PID -o etime= 2>/dev/null | xargs || echo 'Unknown')"
+        echo "   • CPU: $(ps -p $FRONTEND_PID -o %cpu= 2>/dev/null | xargs || echo 'Unknown')%"
+        echo "   • Memory: $(ps -p $FRONTEND_PID -o %mem= 2>/dev/null | xargs || echo 'Unknown')%"
+        
+        # Check port 3000
+        if command -v lsof &> /dev/null; then
+            if lsof -p "$FRONTEND_PID" -a -i :3000 2>/dev/null | grep -q LISTEN; then
+                echo "   • Port 3000: Active (LISTENING)"
+                echo "   • UI URL: http://localhost:3000"
+            else
+                echo "   • Port 3000: Inactive (may be starting)"
+            fi
+        fi
+        
+        FRONTEND_RUNNING=true
     fi
 fi
-echo ""
 
-# 로그 파일 정보
-echo "📄 로그 파일 정보:"
-if [ -f "$LOG_FILE" ]; then
-    LOG_SIZE=$(du -h "$LOG_FILE" 2>/dev/null | cut -f1 || echo '0B')
-    LOG_LINES=$(wc -l < "$LOG_FILE" 2>/dev/null || echo '0')
-    echo "   • 일반 로그: $LOG_FILE ($LOG_SIZE, $LOG_LINES 줄)"
-else
-    echo "   • 일반 로그: $LOG_FILE (파일 없음)"
-fi
+echo
 
-if [ -f "$ERROR_LOG" ]; then
-    ERROR_SIZE=$(du -h "$ERROR_LOG" 2>/dev/null | cut -f1 || echo '0B')
-    ERROR_LINES=$(wc -l < "$ERROR_LOG" 2>/dev/null || echo '0')
-    echo "   • 에러 로그: $ERROR_LOG ($ERROR_SIZE, $ERROR_LINES 줄)"
+# Overall status
+echo "📊 [OVERALL STATUS]"
+if [ "$BACKEND_RUNNING" = true ] && [ "$FRONTEND_RUNNING" = true ]; then
+    echo "🎉 SUCCESS: Full-Stack Platform is running normally!"
+    echo
+    echo "🌐 ACCESS URLs:"
+    echo "   • Frontend UI: http://localhost:3000"
+    echo "   • Backend API: http://localhost:8080"
     
-    # 최근 에러 확인
-    if [ -s "$ERROR_LOG" ]; then
-        echo "   ⚠️  에러 로그에 내용이 있습니다!"
-        echo "      최근 에러 보기: tail -f $ERROR_LOG"
+    if command -v hostname &> /dev/null; then
+        LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+        if [ -n "$LOCAL_IP" ]; then
+            echo "   • Network UI: http://$LOCAL_IP:3000"
+        fi
     fi
 else
-    echo "   • 에러 로그: $ERROR_LOG (파일 없음)"
+    echo "⚠️  WARNING: Platform is not fully operational."
+    if [ "$BACKEND_RUNNING" = false ]; then
+        echo "   • Backend: Not running"
+    fi
+    if [ "$FRONTEND_RUNNING" = false ]; then
+        echo "   • Frontend: Not running"
+    fi
+    echo
+    echo "To start: ./start.sh"
 fi
-echo ""
 
-# 시스템 자원 정보 (선택사항)
-echo "💻 시스템 자원:"
+echo
+
+# Log file information
+echo "📄 [LOG FILES]"
+if [ -f "$BACKEND_LOG" ]; then
+    BACKEND_LOG_SIZE=$(du -h "$BACKEND_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    BACKEND_LOG_LINES=$(wc -l < "$BACKEND_LOG" 2>/dev/null || echo '0')
+    echo "   • Backend log: $BACKEND_LOG ($BACKEND_LOG_SIZE, $BACKEND_LOG_LINES lines)"
+else
+    echo "   • Backend log: $BACKEND_LOG (File not found)"
+fi
+
+if [ -f "$FRONTEND_LOG" ]; then
+    FRONTEND_LOG_SIZE=$(du -h "$FRONTEND_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    FRONTEND_LOG_LINES=$(wc -l < "$FRONTEND_LOG" 2>/dev/null || echo '0')
+    echo "   • Frontend log: $FRONTEND_LOG ($FRONTEND_LOG_SIZE, $FRONTEND_LOG_LINES lines)"
+else
+    echo "   • Frontend log: $FRONTEND_LOG (File not found)"
+fi
+
+# Check error logs
+if [ -f "$BACKEND_ERROR_LOG" ] && [ -s "$BACKEND_ERROR_LOG" ]; then
+    BACKEND_ERROR_SIZE=$(du -h "$BACKEND_ERROR_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    echo "   • Backend errors: $BACKEND_ERROR_LOG ($BACKEND_ERROR_SIZE)"
+    echo "     ⚠️  WARNING: Backend error log contains content!"
+fi
+
+if [ -f "$FRONTEND_ERROR_LOG" ] && [ -s "$FRONTEND_ERROR_LOG" ]; then
+    FRONTEND_ERROR_SIZE=$(du -h "$FRONTEND_ERROR_LOG" 2>/dev/null | cut -f1 || echo '0B')
+    echo "   • Frontend errors: $FRONTEND_ERROR_LOG ($FRONTEND_ERROR_SIZE)"
+    echo "     ⚠️  WARNING: Frontend error log contains content!"
+fi
+
+echo
+
+# System resources
+echo "💻 [SYSTEM RESOURCES]"
 if command -v free &> /dev/null; then
     MEM_INFO=$(free -h | grep '^Mem:')
-    echo "   • 메모리: $(echo $MEM_INFO | awk '{print $3"/"$2" ("$3")"}')"
+    echo "   • Memory: $(echo $MEM_INFO | awk '{print $3"/"$2" ("$3")"}')"
 elif command -v vm_stat &> /dev/null; then
     # macOS
-    echo "   • 메모리: macOS (vm_stat 사용)"
+    echo "   • Memory: macOS (use Activity Monitor for details)"
 fi
 
 if command -v df &> /dev/null; then
     DISK_INFO=$(df -h . | tail -1)
-    echo "   • 디스크: $(echo $DISK_INFO | awk '{print $3"/"$2" ("$5" 사용)"}')"
+    echo "   • Disk: $(echo $DISK_INFO | awk '{print $3"/"$2" ("$5" used)"}')"
 fi
-echo ""
 
-# 유용한 명령어
-echo "🔧 유용한 명령어:"
-echo "   • 로그 실시간 보기: tail -f $LOG_FILE"
-echo "   • 에러 로그 보기: tail -f $ERROR_LOG"
-echo "   • 서버 중지: ./stop.sh"
-echo "   • 서버 재시작: ./stop.sh && ./start.sh"
-echo "" 
+echo
+
+# Application info
+echo "🚀 [APPLICATION INFO]"
+echo "   • Architecture: Backend (Flask/Python) + Frontend (Next.js/React)"
+echo "   • AI Models: BiRefNet + Real-ESRGAN"
+echo "   • Features: Image/Video processing, Background removal, Upscaling"
+echo "   • UI: Modern React with shadcn/ui components"
+echo
+
+# Useful commands
+echo "🔧 [USEFUL COMMANDS]"
+echo "   • View backend logs: cat $BACKEND_LOG"
+echo "   • View frontend logs: cat $FRONTEND_LOG"
+echo "   • Real-time backend logs: tail -f $BACKEND_LOG"
+echo "   • Real-time frontend logs: tail -f $FRONTEND_LOG"
+echo "   • Stop servers: ./stop.sh"
+echo "   • Restart servers: ./stop.sh && ./start.sh"
+echo

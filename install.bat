@@ -1,52 +1,79 @@
 @echo off
 setlocal enabledelayedexpansion
 
-echo Starting AI Image/Video Processing Tool Installation...
+echo ========================================
+echo EdgeHD 2.0 - AI Image/Video Processing Platform
+echo Full-Stack Installation (Backend + Frontend)
+echo ========================================
+echo.
+
+:: Check if Node.js is installed
+echo [1/4] Checking Node.js installation...
+node --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: Node.js is not installed.
+    echo.
+    echo Please install Node.js first:
+    echo    * Download from: https://nodejs.org/
+    echo    * Recommended: LTS version
+    echo.
+    echo After installation, restart terminal and run this script again.
+    pause
+    exit /b 1
+) else (
+    for /f "tokens=*" %%i in ('node --version 2^>nul') do echo SUCCESS: Node.js %%i found
+)
+
+:: Check if npm is available
+npm --version >nul 2>&1
+if errorlevel 1 (
+    echo ERROR: npm is not available.
+    pause
+    exit /b 1
+) else (
+    for /f "tokens=*" %%i in ('npm --version 2^>nul') do echo SUCCESS: npm %%i found
+)
+
 echo.
 
 :: Check if conda is available and get the actual path
+echo [2/4] Checking Python/Conda installation...
 for /f "tokens=*" %%i in ('where conda 2^>nul') do (
     echo SUCCESS: Conda found at %%i
     set "CONDA_PATH=%%i"
-    goto :start_installation
+    goto :start_backend_installation
 )
 
 :: Check common Miniconda installation paths
 if exist "%USERPROFILE%\miniconda3\Scripts\conda.exe" (
     echo SUCCESS: Conda found at %USERPROFILE%\miniconda3\Scripts\conda.exe
     set "CONDA_PATH=%USERPROFILE%\miniconda3\Scripts\conda.exe"
-    goto :start_installation
+    goto :start_backend_installation
 )
 
 if exist "%USERPROFILE%\Miniconda3\Scripts\conda.exe" (
     echo SUCCESS: Conda found at %USERPROFILE%\Miniconda3\Scripts\conda.exe
     set "CONDA_PATH=%USERPROFILE%\Miniconda3\Scripts\conda.exe"
-    goto :start_installation
+    goto :start_backend_installation
 )
 
 if exist "C:\ProgramData\Miniconda3\Scripts\conda.exe" (
     echo SUCCESS: Conda found at C:\ProgramData\Miniconda3\Scripts\conda.exe
     set "CONDA_PATH=C:\ProgramData\Miniconda3\Scripts\conda.exe"
-    goto :start_installation
+    goto :start_backend_installation
 )
 
 if exist "%LOCALAPPDATA%\miniconda3\Scripts\conda.exe" (
     echo SUCCESS: Conda found at %LOCALAPPDATA%\miniconda3\Scripts\conda.exe
     set "CONDA_PATH=%LOCALAPPDATA%\miniconda3\Scripts\conda.exe"
-    goto :start_installation
+    goto :start_backend_installation
 )
 
 :: Check Anaconda paths as well
 if exist "%USERPROFILE%\anaconda3\condabin\conda.bat" (
     echo SUCCESS: Conda found at %USERPROFILE%\anaconda3\condabin\conda.bat
     set "CONDA_PATH=%USERPROFILE%\anaconda3\condabin\conda.bat"
-    goto :start_installation
-)
-
-if exist "C:\Users\%USERNAME%\anaconda3\condabin\conda.bat" (
-    echo SUCCESS: Conda found at C:\Users\%USERNAME%\anaconda3\condabin\conda.bat
-    set "CONDA_PATH=C:\Users\%USERNAME%\anaconda3\condabin\conda.bat"
-    goto :start_installation
+    goto :start_backend_installation
 )
 
 :: Conda not found - offer to install
@@ -79,8 +106,8 @@ if /i "%choice%" neq "n" (
     exit /b 1
 )
 
-:start_installation
-echo INFO: Proceeding with AI tool installation using conda.
+:start_backend_installation
+echo INFO: Proceeding with backend installation using conda.
 
 :: Create Conda environment
 echo Creating Conda environment 'edgehd'...
@@ -104,7 +131,6 @@ if errorlevel 1 (
 echo SUCCESS: Conda environment 'edgehd' created successfully.
 
 :activate_env
-
 :: Activate environment
 echo Activating Conda environment...
 call conda activate edgehd
@@ -113,7 +139,7 @@ if errorlevel 1 (
     echo NOTE: You may need to manually activate the environment later.
 )
 
-:: Install Real-ESRGAN compatible PyTorch versions first
+:: Install PyTorch 2.1.0 for Real-ESRGAN compatibility
 echo.
 echo ========================================
 echo Installing PyTorch 2.1.0 (Real-ESRGAN v0.3.0 compatible)...
@@ -185,110 +211,77 @@ if errorlevel 1 (
 
 echo SUCCESS: PyTorch 2.1.0 installed successfully.
 
-:: Install compatible transformers version
+:: Install backend dependencies
 echo.
 echo ========================================
-echo Installing transformers 4.35.0 (PyTorch 2.1.0 compatible)...
+echo Installing backend dependencies...
 echo ========================================
-pip install transformers==4.35.0
-if errorlevel 1 (
-    echo WARNING: Failed to install transformers 4.35.0. Installing latest compatible version...
-    pip install transformers
-    if errorlevel 1 (
-        echo ERROR: Failed to install transformers.
-        pause
-        exit /b 1
-    )
-)
-
-echo SUCCESS: transformers installed successfully.
-
-:: Create project directory structure
-echo.
-echo ========================================
-echo Creating project directory structure...
-echo ========================================
-if not exist uploads mkdir uploads
-if not exist downloads mkdir downloads
-if not exist temp mkdir temp
-if not exist models mkdir models
-if not exist models\hub mkdir models\hub
-echo SUCCESS: Directory structure created.
-
-:: Install Flask and web framework packages
-echo.
-echo ========================================
-echo Installing Flask and web framework packages...
-echo ========================================
-pip install Flask==3.0.0 Flask-CORS==4.0.0 werkzeug==3.0.1
-if errorlevel 1 (
-    echo ERROR: Failed to install Flask packages.
+cd backend
+if not exist requirements.txt (
+    echo ERROR: Backend requirements.txt not found.
+    echo Please ensure you're running this from the EdgeHD root directory.
     pause
     exit /b 1
 )
-echo SUCCESS: Flask packages installed.
 
-:: Install image/video processing packages
-echo.
-echo ========================================
-echo Installing image/video processing packages...
-echo ========================================
-pip install "numpy>=1.24.0,<2.0.0" Pillow>=10.0.0 opencv-python>=4.8.0 requests>=2.31.0
+pip install -r requirements.txt
 if errorlevel 1 (
-    echo ERROR: Failed to install image processing packages.
+    echo ERROR: Failed to install backend dependencies.
     pause
     exit /b 1
 )
-echo SUCCESS: Image/video processing packages installed.
 
-:: Install AI model dependencies
+echo SUCCESS: Backend dependencies installed.
+cd ..
+
+:: Install frontend dependencies
 echo.
 echo ========================================
-echo Installing AI model dependencies...
+echo [3/4] Installing frontend dependencies...
 echo ========================================
-pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
-if errorlevel 1 (
-    echo ERROR: Failed to install AI model dependencies.
+cd frontend
+if not exist package.json (
+    echo ERROR: Frontend package.json not found.
+    echo Please ensure you're running this from the EdgeHD root directory.
     pause
     exit /b 1
 )
-echo SUCCESS: AI model dependencies installed.
 
-:: Update watchdog for Flask compatibility
+echo INFO: Installing Node.js packages...
+npm install
+if errorlevel 1 (
+    echo ERROR: Failed to install frontend dependencies.
+    pause
+    exit /b 1
+)
+
+echo SUCCESS: Frontend dependencies installed.
+cd ..
+
+:: Install root dependencies (concurrently)
 echo.
 echo ========================================
-echo Updating watchdog for Flask compatibility...
+echo [4/4] Installing root dependencies...
 echo ========================================
-pip install --upgrade watchdog
+echo INFO: Installing concurrently for running both servers...
+npm install
 if errorlevel 1 (
-    echo WARNING: Failed to update watchdog. Flask debug mode may have issues.
-) else (
-    echo SUCCESS: watchdog updated successfully.
+    echo ERROR: Failed to install root dependencies.
+    pause
+    exit /b 1
 )
+
+echo SUCCESS: Root dependencies installed.
 
 :: Test package compatibility
 echo.
 echo ========================================
 echo Testing package compatibility...
 echo ========================================
+call conda activate edgehd
 python -c "import torch; print('PyTorch version:', torch.__version__)" 2>nul
 if errorlevel 1 (
     echo ERROR: PyTorch import failed.
-    pause
-    exit /b 1
-)
-
-python -c "import transformers; print('Transformers version:', transformers.__version__)" 2>nul
-if errorlevel 1 (
-    echo ERROR: Transformers import failed.
-    pause
-    exit /b 1
-)
-
-python -c "import realesrgan; print('Real-ESRGAN import successful')" 2>nul
-if errorlevel 1 (
-    echo ERROR: Real-ESRGAN import failed.
-    echo INFO: This may be due to version compatibility issues.
     pause
     exit /b 1
 )
@@ -310,9 +303,9 @@ echo ========================================
 
 :: Set environment variables for project-local model storage
 echo INFO: Setting up project-local model storage...
-set HF_HOME=%cd%\models
-set TRANSFORMERS_CACHE=%cd%\models
-set HUGGINGFACE_HUB_CACHE=%cd%\models
+set HF_HOME=%cd%\backend\models
+set TRANSFORMERS_CACHE=%cd%\backend\models
+set HUGGINGFACE_HUB_CACHE=%cd%\backend\models
 
 :: Test environment variables
 echo INFO: Project-local model storage configured:
@@ -320,13 +313,11 @@ echo    HF_HOME=%HF_HOME%
 echo    TRANSFORMERS_CACHE=%TRANSFORMERS_CACHE%
 echo    HUGGINGFACE_HUB_CACHE=%HUGGINGFACE_HUB_CACHE%
 
-echo    All AI models will be stored in project models\ directory
+echo    All AI models will be stored in backend\models\ directory
 echo    AI models downloaded on first run:
 echo       * BiRefNet background removal model (~424MB)
 echo       * Real-ESRGAN General v3 4x upscaling model (~17MB)
-echo       * v0.3.0 supports only 4x (no 2x dedicated model)
 echo    Models are managed independently per project
-echo    WARNING: Never stored in system cache (~/.cache/huggingface/)
 echo SUCCESS: AI model configuration completed.
 
 echo.
@@ -334,50 +325,29 @@ echo ========================================
 echo    INSTALLATION COMPLETED SUCCESSFULLY!
 echo ========================================
 echo.
-echo How to run:
-echo    start.bat          - Start background server
-echo    python app.py      - Start development server (foreground)
+echo EdgeHD 2.0 Full-Stack Platform is ready!
 echo.
-echo Server URL: http://localhost:8080
+echo ARCHITECTURE:
+echo    * Backend:  Flask API server (Python 3.11 + PyTorch 2.1.0)
+echo    * Frontend: Next.js + shadcn/ui (Node.js + React)
+echo    * Database: File-based storage
+echo    * AI Models: BiRefNet + Real-ESRGAN
+echo.
+echo HOW TO RUN:
+echo    npm run dev          - Start both servers (development)
+echo    npm run dev:backend  - Start backend only (http://localhost:8080)
+echo    npm run dev:frontend - Start frontend only (http://localhost:3000)
+echo.
+echo PRODUCTION:
+echo    npm run build        - Build frontend for production
+echo    npm run start        - Start both servers (production)
+echo.
+echo ACCESS URLS:
+echo    * Frontend UI: http://localhost:3000
+echo    * Backend API: http://localhost:8080
 echo.
 echo See README.md for detailed usage instructions.
 
-:: Create enhanced run script
-echo Creating enhanced run script...
-(
-echo @echo off
-echo setlocal enabledelayedexpansion
-echo echo Starting AI Image/Video Processing Tool...
-echo.
-echo :: Find conda installation
-echo where conda ^>nul 2^>^&1
-echo if not errorlevel 1 ^(
-echo     call conda activate edgehd
-echo ^) else ^(
-echo     if exist "%%USERPROFILE%%\miniconda3\Scripts\activate.bat" ^(
-echo         call "%%USERPROFILE%%\miniconda3\Scripts\activate.bat" edgehd
-echo     ^) else if exist "%%USERPROFILE%%\anaconda3\condabin\conda.bat" ^(
-echo         call "%%USERPROFILE%%\anaconda3\condabin\conda.bat" activate edgehd
-echo     ^) else ^(
-echo         echo ERROR: Conda not found. Please run install.bat first.
-echo         pause
-echo         exit /b 1
-echo     ^)
-echo ^)
-echo.
-echo :: Set environment variables for project-local model storage
-echo set HF_HOME=%%cd%%\models
-echo set TRANSFORMERS_CACHE=%%cd%%\models
-echo set HUGGINGFACE_HUB_CACHE=%%cd%%\models
-echo.
-echo echo INFO: Starting with PyTorch 2.1.0 and Real-ESRGAN v0.3.0 compatibility
-echo python app.py
-echo pause
-) > run.bat
-
-echo SUCCESS: Enhanced run script 'run.bat' created.
-echo    You can now simply double-click 'run.bat' to start the application.
-echo.
 pause
 goto :eof
 
@@ -435,4 +405,4 @@ echo Location: %USERPROFILE%\miniconda3
 echo.
 echo IMPORTANT: Please close this terminal and open a new one for conda to work properly.
 
-exit /b 0 
+exit /b 0

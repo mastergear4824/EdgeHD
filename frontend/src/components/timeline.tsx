@@ -152,13 +152,13 @@ export default function Timeline({
 
   const handlePlayheadDrag = useCallback(
     (e: MouseEvent) => {
-      if (!isDraggingPlayhead || !timelineRef.current) return;
+      if (!isDraggingPlayhead || !containerRef.current) return;
 
-      const rect = timelineRef.current.getBoundingClientRect();
-      const x = e.clientX - rect.left;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left - trackLabelWidth; // 트랙 라벨 영역 제외
       const relativePosition = Math.max(
         0,
-        Math.min(1, x / timelineContentWidth)
+        Math.min(1, (x + scrollPosition) / timelineContentWidth)
       );
       const targetTime = relativePosition * videoDuration;
       const targetFrameIndex = Math.round(targetTime * videoFps);
@@ -176,6 +176,8 @@ export default function Timeline({
       videoFps,
       videoFrames.length,
       onFrameSelect,
+      trackLabelWidth,
+      scrollPosition,
     ]
   );
 
@@ -292,7 +294,7 @@ export default function Timeline({
         </div>
 
         {/* 타임라인 본체 */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col relative">
           {/* 시간 눈금 영역 */}
           <div className="h-8 bg-gray-800 border-b border-gray-700 flex">
             {/* 트랙 라벨 영역 */}
@@ -317,27 +319,6 @@ export default function Timeline({
                 }}
               >
                 {generateTimeMarkers()}
-
-                {/* 현재 재생 위치 인디케이터 - 드래그 가능 */}
-                <div
-                  className={`absolute top-0 w-0.5 h-full z-30 cursor-pointer ${
-                    isDraggingPlayhead ? "bg-red-400" : "bg-red-500"
-                  }`}
-                  style={{
-                    left: `${
-                      (currentTime / videoDuration) * timelineContentWidth
-                    }px`,
-                  }}
-                  onMouseDown={handlePlayheadMouseDown}
-                >
-                  <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
-                    <div
-                      className={`w-2 h-2 rotate-45 ${
-                        isDraggingPlayhead ? "bg-red-400" : "bg-red-500"
-                      }`}
-                    ></div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -491,6 +472,30 @@ export default function Timeline({
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* 전체 높이 재생 위치 인디케이터 - 드래그 가능 */}
+          <div
+            className={`absolute top-0 w-0.5 h-full z-50 cursor-pointer ${
+              isDraggingPlayhead ? "bg-red-400" : "bg-red-500"
+            }`}
+            style={{
+              left: `${
+                trackLabelWidth +
+                (currentTime / videoDuration) * timelineContentWidth -
+                scrollPosition
+              }px`,
+            }}
+            onMouseDown={handlePlayheadMouseDown}
+          >
+            {/* 상단 삼각형 마커 */}
+            <div className="absolute -top-1 left-1/2 transform -translate-x-1/2">
+              <div
+                className={`w-2 h-2 rotate-45 ${
+                  isDraggingPlayhead ? "bg-red-400" : "bg-red-500"
+                }`}
+              ></div>
             </div>
           </div>
         </div>

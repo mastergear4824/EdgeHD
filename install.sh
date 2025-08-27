@@ -193,12 +193,26 @@ pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
 
 # 프로젝트 내 모델 저장 설정
 echo "Configuring AI models..."
+
+# Set environment variables for project-local model storage
+echo "INFO: Setting up project-local model storage..."
+export HF_HOME="$(pwd)/models"
+export TRANSFORMERS_CACHE="$(pwd)/models" 
+export HUGGINGFACE_HUB_CACHE="$(pwd)/models"
+
+# Test environment variables
+echo "INFO: Project-local model storage configured:"
+echo "   HF_HOME=$HF_HOME"
+echo "   TRANSFORMERS_CACHE=$TRANSFORMERS_CACHE"
+echo "   HUGGINGFACE_HUB_CACHE=$HUGGINGFACE_HUB_CACHE"
+
 echo "   All AI models will be stored in project models/ directory"
 echo "   AI models downloaded on first run:"
 echo "      * BiRefNet background removal model (~424MB)"
 echo "      * Real-ESRGAN General v3 4x upscaling model (~17MB)"
 echo "      * v0.3.0 supports only 4x (no 2x dedicated model)"
 echo "   Models are managed independently per project"
+echo "   WARNING: Never stored in system cache (~/.cache/huggingface/)"
 
 echo ""
 echo "Installation completed successfully!"
@@ -236,6 +250,7 @@ fi
 # 프로젝트 내 모델 저장 환경변수 설정
 export HF_HOME="$(pwd)/models"
 export TRANSFORMERS_CACHE="$(pwd)/models"
+export HUGGINGFACE_HUB_CACHE="$(pwd)/models"
 
 # 애플리케이션 실행
 python app.py

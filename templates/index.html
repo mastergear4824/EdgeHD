@@ -738,6 +738,93 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       }
 
+      .btn.vectorize {
+        background: linear-gradient(45deg, #ff6b6b, #feca57);
+        color: white;
+        border: none;
+      }
+
+      /* 벡터화 팝업 스타일 */
+      .vectorize-popup {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+      }
+
+      .vectorize-popup .popup-content {
+        max-width: 450px;
+        width: 90%;
+      }
+
+      .vectorize-popup .option-group {
+        margin-bottom: 20px;
+      }
+
+      .vectorize-popup .option-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .vectorize-popup .option-group select {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        background: white;
+      }
+
+      .vectorize-popup .option-group p {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+        margin-bottom: 0;
+      }
+
+      .vectorize-popup .popup-actions {
+        margin-top: 25px;
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+      }
+
+      .vectorize-popup .popup-actions .btn {
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s ease;
+      }
+
+      .vectorize-popup .btn-cancel {
+        background: #6c757d;
+        color: white;
+      }
+
+      .vectorize-popup .btn-cancel:hover {
+        background: #5a6268;
+      }
+
+      .vectorize-popup .btn-vectorize {
+        background: linear-gradient(45deg, #ff6b6b, #feca57);
+        color: white;
+      }
+
+      .vectorize-popup .btn-vectorize:hover {
+        background: linear-gradient(45deg, #ff5252, #ffb300);
+        transform: translateY(-1px);
+      }
+
       .btn.download {
         background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
       }
@@ -944,6 +1031,9 @@
               onclick="processImage('background')"
             >
               🫥 배경 제거
+            </button>
+            <button class="btn vectorize" onclick="showVectorizeOptions()">
+              📐 벡터화
             </button>
           </div>
         </div>
@@ -1229,6 +1319,122 @@
       </div>
     </div>
 
+    <!-- 벡터화 옵션 팝업 -->
+    <div class="vectorize-popup" id="vectorizePopup">
+      <div class="popup-content">
+        <div class="popup-header">
+          <div class="popup-title">📐 벡터화 옵션</div>
+          <button class="close-btn" onclick="closeVectorizePopup()">×</button>
+        </div>
+
+        <div class="option-group">
+          <label>🚫 완전 원본 보존 (전처리 없음)</label>
+          <div
+            style="
+              padding: 15px;
+              background: linear-gradient(135deg, #fce4ec 0%, #e1f5fe 100%);
+              border-radius: 8px;
+              border: 2px solid #e91e63;
+              margin-top: 8px;
+            "
+          >
+            <div style="display: flex; align-items: center; margin-bottom: 8px">
+              <span style="font-size: 18px; margin-right: 8px">🎨</span>
+              <strong style="color: #c2185b"
+                >어떤 전처리도 하지 않고 원본 그대로 벡터화</strong
+              >
+            </div>
+            <ul
+              style="
+                margin: 0;
+                padding-left: 20px;
+                color: #1976d2;
+                font-size: 13px;
+              "
+            >
+              <li>🚫 <strong>AI 배경 제거 스킵</strong> - 배경 그대로 유지</li>
+              <li>🚫 <strong>색상 양자화 스킵</strong> - 원본 색상 그대로</li>
+              <li>🚫 <strong>엣지 강화 스킵</strong> - 원본 디테일 그대로</li>
+              <li>🌈 <strong>100% 원본 보존</strong> - 전처리 일체 없음</li>
+            </ul>
+            <p
+              style="
+                margin: 8px 0 0 0;
+                font-size: 12px;
+                color: #ad1457;
+                font-weight: bold;
+              "
+            >
+              🚫 순수 원본 벡터화! AI 전처리 완전 차단으로 색상 손실 방지
+            </p>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label>벡터화 모드:</label>
+          <div>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+                cursor: pointer;
+                margin-bottom: 8px;
+              "
+            >
+              <input type="radio" name="vectorizeMode" value="color" checked />
+              <span>🎨 컬러 (VTracer) - 색상 벡터화</span>
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input type="radio" name="vectorizeMode" value="bw" />
+              <span>⚫⚪ 흑백 (Potrace) - 단색 벡터화</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label>출력 형식:</label>
+          <div>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 14px;
+                cursor: pointer;
+              "
+            >
+              <input
+                type="radio"
+                name="vectorizeOutputFormat"
+                value="svg"
+                checked
+              />
+              <span>SVG (벡터, 무한 확대 가능)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="popup-actions">
+          <button class="btn btn-cancel" onclick="closeVectorizePopup()">
+            취소
+          </button>
+          <button class="btn btn-vectorize" onclick="processVectorize()">
+            📐 벡터화 시작
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- 파일 입력 요소들 -->
     <input type="file" id="fileInput" accept="image/*" />
     <input type="file" id="videoFileInput" accept="video/*" />
@@ -1257,7 +1463,18 @@
 
         if (serverWorkId) {
           workId = serverWorkId.content;
-          console.log("✅ workId 설정됨:", workId);
+          console.log("✅ workId 설정됨 (메타태그):", workId);
+        }
+
+        // URL에서 workId 추출 (/work/uuid 패턴)
+        if (!workId || workId.trim() === "") {
+          const pathMatch = window.location.pathname.match(
+            /^\/work\/([a-f0-9-]+)$/
+          );
+          if (pathMatch) {
+            workId = pathMatch[1];
+            console.log("✅ workId 설정됨 (URL 추출):", workId);
+          }
         }
 
         // work_data는 script 태그에서 직접 설정된 window.serverWorkData 사용
@@ -1273,6 +1490,7 @@
 
       // DOM 요소들
       const fileInput = document.getElementById("fileInput");
+
       const videoFileInput = document.getElementById("videoFileInput");
       const uploadArea = document.getElementById("uploadArea");
       const videoUploadArea = document.getElementById("videoUploadArea");
@@ -1431,19 +1649,215 @@
         const tabs = document.querySelectorAll(".mode-tab");
         tabs.forEach((tab) => tab.classList.remove("active"));
 
+        // 모든 모드 숨기기
+        imageMode.classList.add("hidden");
+        videoMode.classList.remove("active");
+
         if (mode === "image") {
           tabs[0].classList.add("active");
           imageMode.classList.remove("hidden");
-          videoMode.classList.remove("active");
           initializeApp();
         } else if (mode === "video") {
           tabs[1].classList.add("active");
-          imageMode.classList.add("hidden");
           videoMode.classList.add("active");
           initializeVideoMode();
         }
 
         updateEmptyState();
+      }
+
+      // 벡터화 옵션 팝업 표시
+      function showVectorizeOptions() {
+        console.log("벡터화 버튼 클릭됨", currentImageFile);
+
+        if (!currentImageFile) {
+          showMessage("먼저 이미지를 업로드해주세요.", "error");
+          return;
+        }
+
+        const popup = document.getElementById("vectorizePopup");
+        console.log("팝업 요소:", popup);
+
+        if (popup) {
+          popup.style.display = "flex";
+          console.log("팝업 표시됨");
+        } else {
+          console.error("vectorizePopup 요소를 찾을 수 없음");
+        }
+      }
+
+      // 벡터화 옵션 팝업 닫기
+      function closeVectorizePopup() {
+        document.getElementById("vectorizePopup").style.display = "none";
+      }
+
+      // 팝업 오버레이 클릭 이벤트 (팝업 밖 클릭시 닫기)
+      document.addEventListener("DOMContentLoaded", function () {
+        const vectorizePopup = document.getElementById("vectorizePopup");
+
+        vectorizePopup.addEventListener("click", function (e) {
+          if (e.target === vectorizePopup) {
+            closeVectorizePopup();
+          }
+        });
+
+        // ESC 키로 팝업 닫기
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && vectorizePopup.style.display === "flex") {
+            closeVectorizePopup();
+          }
+        });
+      });
+
+      // 벡터화 처리 실행
+      function processVectorize() {
+        console.log("processVectorize 함수 시작됨");
+
+        if (!workId) {
+          showMessage(
+            "세션이 초기화되지 않았습니다. 페이지를 새로고침 후 다시 시도해주세요.",
+            "error"
+          );
+          return;
+        }
+
+        // 업로드된 파일이 있는지 확인 (새로 업로드된 파일 또는 복원된 세션)
+        if (!currentImageFile && (!workData || !workData.uploaded)) {
+          showMessage("먼저 이미지를 업로드해주세요.", "error");
+          return;
+        }
+
+        console.log("벡터화 진행 중...");
+        console.log("현재 workId:", workId);
+        if (currentImageFile) {
+          console.log("현재 파일명:", currentImageFile.name);
+        } else {
+          console.log("복원된 세션 파일 사용:", workData?.original_filename);
+        }
+
+        // 팝업 닫기
+        closeVectorizePopup();
+        console.log("팝업 닫힌 후");
+
+        emptyState.classList.add("hide");
+        rightImageArea.classList.remove("visible");
+        console.log("UI 상태 업데이트 완료");
+
+        const formData = new FormData();
+
+        // 파일명 결정 (새로 업로드된 파일 또는 복원된 세션)
+        let filename;
+        if (currentImageFile) {
+          filename = currentImageFile.name;
+          console.log("새로 업로드된 파일 사용:", filename);
+        } else if (workData && workData.original_filename) {
+          filename = workData.original_filename;
+          console.log("복원된 세션 파일 사용:", filename);
+        } else {
+          showMessage("파일 정보를 찾을 수 없습니다.", "error");
+          return;
+        }
+
+        formData.append("filename", filename);
+        console.log("FormData 생성 및 filename 추가 완료:", filename);
+
+        // 🧠 AI 자동 벡터화 옵션
+        const outputFormat = document.querySelector(
+          'input[name="vectorizeOutputFormat"]:checked'
+        ).value;
+        const vectorizeMode = document.querySelector(
+          'input[name="vectorizeMode"]:checked'
+        ).value;
+        console.log("🧠 AI 자동 옵션 수집 완료:", {
+          outputFormat,
+          vectorizeMode,
+          aiAutoColors: true,
+        });
+
+        // AI가 자동으로 색상 수를 결정하므로 n_colors 전달하지 않음
+        formData.append("output_format", outputFormat);
+        formData.append("vectorize_mode", vectorizeMode); // 벡터화 모드 추가
+        formData.append("ai_auto_colors", "true"); // AI 자동 모드 플래그
+
+        // 작업 ID 추가 (전역 변수 사용)
+        console.log("workId 얻음:", workId);
+
+        if (workId) {
+          formData.append("work_id", workId);
+        }
+
+        // 진행률 추적 시작
+        console.log("진행률 추적 시작");
+        try {
+          if (typeof startProgressTracking === "function") {
+            startProgressTracking(workId);
+            console.log("진행률 추적 시작 완료");
+          } else {
+            console.log("startProgressTracking 함수가 정의되지 않음, 건너뜀");
+          }
+        } catch (error) {
+          console.error("startProgressTracking 에러:", error);
+        }
+
+        console.log("/vectorize API 호출 시작");
+        fetch("/vectorize", {
+          method: "POST",
+          body: formData,
+        })
+          .then((response) => {
+            console.log("서버 응답 받음:", response.status);
+            return response.json();
+          })
+          .then((data) => {
+            console.log("서버 응답 데이터:", data);
+            if (data.error) {
+              // 오류 처리
+              console.error("벡터화 오류:", data.error);
+              showMessage(data.error, "error");
+              if (data.file_path) {
+                console.log("찾지 못한 파일 경로:", data.file_path);
+              }
+              if (data.session_exists === false) {
+                console.log("세션이 존재하지 않음 - 파일 업로드가 필요합니다");
+              }
+              return;
+            }
+            if (data.success) {
+              console.log("벡터화 성공! 파일 크기:", data.file_size, "바이트");
+              if (data.file_size === 0) {
+                console.error("경고: SVG 파일 크기가 0바이트입니다!");
+              }
+              showMessage(
+                `🎉 벡터화 완료! (${data.colors_used || "AI"}색상, ${Math.round(
+                  data.file_size / 1024
+                )}KB)`,
+                "success"
+              );
+
+              // URL 업데이트
+              if (data.work_id && window.location.pathname === "/") {
+                window.history.pushState({}, "", `/work/${data.work_id}`);
+              }
+
+              // 결과 표시 (다른 처리와 동일한 방식)
+              rightImage.src = data.download_url;
+              rightImageLabel.textContent = `📐 벡터화 완료 (${
+                data.n_colors
+              }색상, ${Math.round(data.file_size / 1024)}KB) ✨`;
+              rightImageArea.classList.add("visible");
+
+              // 다운로드 영역도 표시
+              rightPanel.classList.add("visible");
+
+              currentDownloadUrl = data.download_url;
+            } else {
+              showMessage(`벡터화 실패: ${data.error}`, "error");
+            }
+          })
+          .catch((error) => {
+            console.error("벡터화 에러 발생:", error);
+            showMessage("벡터화 중 오류가 발생했습니다.", "error");
+          });
       }
 
       // 이미지 모드 초기화
@@ -2086,35 +2500,30 @@
           rightPanel.classList.add("visible");
           mainContainer.classList.remove("upload-only");
 
-          // 업로드 상태를 즉시 서버에 저장 + 이미지도 localStorage에 저장
+          // 실제 파일을 서버에 업로드
           const formData = new FormData();
           formData.append("work_id", workId);
-          formData.append("original_filename", file.name);
+          formData.append("file", file); // 실제 파일 추가
 
-          // 이미지 데이터를 localStorage에도 저장
-          const imageDataUrl = e.target.result;
-          localStorage.setItem(`uploaded_image_${workId}`, imageDataUrl);
-          console.log(
-            `💾 이미지 데이터 localStorage 저장 완료: uploaded_image_${workId}`
-          );
+          console.log(`📤 서버에 파일 업로드 시작: ${file.name}`);
 
-          fetch("/save_upload_state", {
+          fetch("/upload", {
             method: "POST",
             body: formData,
           })
             .then((response) => response.json())
             .then((data) => {
-              if (data.success) {
-                console.log(`✅ 업로드 상태 저장 완료: ${workId}`);
+              if (data.message) {
+                console.log(`✅ 파일 업로드 완료: ${workId}`);
                 showMessage(
                   "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
                   "success"
                 );
               } else {
-                console.error("❌ 업로드 상태 저장 실패:", data.error);
+                console.error("❌ 파일 업로드 실패:", data.error);
                 showMessage(
-                  "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
-                  "success"
+                  data.error || "업로드 중 오류가 발생했습니다.",
+                  "error"
                 );
               }
             })
@@ -2337,7 +2746,15 @@
         rightImageArea.classList.remove("visible");
 
         const formData = new FormData();
-        formData.append("file", currentImageFile);
+
+        // 파일 추가 (새로 업로드된 파일 또는 복원된 세션에서는 work_id만)
+        if (currentImageFile) {
+          formData.append("file", currentImageFile);
+          console.log("새로 업로드된 파일 사용:", currentImageFile.name);
+        } else {
+          console.log("복원된 세션에서 처리 (파일 없이 work_id만 전송)");
+        }
+
         // 프론트엔드에서 생성한 work_id 전달
         if (workId) {
           formData.append("work_id", workId);
@@ -2346,7 +2763,10 @@
         let endpoint = "/upload";
         let processingName = "배경 제거";
 
-        if (type === "upscale") {
+        if (type === "background") {
+          endpoint = "/remove_background";
+          processingName = "배경 제거";
+        } else if (type === "upscale") {
           endpoint = "/upscale";
           formData.append("scale", scale.toString());
           processingName = `${scale}x 업스케일`;
@@ -2775,15 +3195,29 @@
 
       // 초기화 및 상태 복원
       function initializeAppWithRestore() {
+        console.log("🔄 initializeAppWithRestore 함수 실행됨");
+        console.log("📊 현재 상태:", {
+          workId: workId,
+          workData: workData,
+          hasWorkData: !!workData,
+        });
+
         // work_data가 있으면 상태 복원
         if (workData) {
           console.log("✅ 작업 상태 복원 시작:", workData);
+          console.log("📝 workData 상세:", {
+            type: workData.type,
+            uploaded: workData.uploaded,
+            completed: workData.completed,
+            original_filename: workData.original_filename,
+          });
 
+          // 업로드된 이미지가 있는 경우 (완료 여부와 관계없이)
           if (
-            workData.completed &&
-            (workData.type === "image" || workData.type === "upscale")
+            (workData.type === "image" || workData.type === "vectorize") &&
+            (workData.uploaded || workData.completed)
           ) {
-            // 완료된 이미지/업스케일 작업 복원
+            console.log("🎯 이미지 복원 조건 만족, UI 업데이트 시작...");
             currentMode = "image";
             switchMode("image");
 
@@ -2791,19 +3225,69 @@
             uploadArea.style.display = "none";
             leftImageArea.classList.add("visible");
             rightPanel.classList.add("visible");
-            rightImageArea.classList.add("visible");
             emptyState.classList.add("hide");
             mainContainer.classList.remove("upload-only");
 
-            // 좌측 패널 - 원본 이미지 표시 (처리된 이미지를 보여줌)
-            leftImage.src = workData.download_url;
-            leftImageLabel.textContent = ""; // 라벨 비우기
+            // 업로드만 된 상태면 원본 이미지 표시
+            if (workData.uploaded && !workData.completed) {
+              console.log(
+                "📤 업로드된 이미지 복원:",
+                workData.original_filename
+              );
+              // 원본 이미지 URL 생성 (세션 디렉토리에서)
+              const originalImageUrl = `/temp/${workId}/${workData.original_filename}`;
+              leftImage.src = originalImageUrl;
+              leftImageLabel.textContent = `📁 ${workData.original_filename}`;
+
+              // 우측 패널은 숨김 (아직 처리되지 않음)
+              rightImageArea.classList.remove("visible");
+
+              // currentImageFile 복원 (AI 처리를 위해)
+              fetch(originalImageUrl)
+                .then((response) => response.blob())
+                .then((blob) => {
+                  currentImageFile = new File(
+                    [blob],
+                    workData.original_filename,
+                    {
+                      type: blob.type || "image/png",
+                    }
+                  );
+                  console.log(
+                    "📁 currentImageFile 복원됨:",
+                    currentImageFile.name
+                  );
+                })
+                .catch((error) => {
+                  console.error("❌ 원본 이미지 파일 복원 실패:", error);
+                });
+            }
+            // 완료된 상태면 처리된 이미지 표시
+            else if (workData.completed) {
+              console.log("✅ 완료된 작업 복원:", workData.filename);
+
+              // 벡터화의 경우 원본을 왼쪽에, 결과를 오른쪽에 표시
+              if (workData.type === "vectorize" && workData.original_filename) {
+                const originalImageUrl = `/temp/${workId}/${workData.original_filename}`;
+                leftImage.src = originalImageUrl;
+                leftImageLabel.textContent = `📁 ${workData.original_filename}`;
+              } else {
+                // 다른 처리(배경제거, 업스케일)는 기존 방식
+                leftImage.src = workData.download_url;
+                leftImageLabel.textContent = ""; // 라벨 비우기
+              }
+              rightImageArea.classList.add("visible");
+            }
 
             // 우측 패널 - 처리 결과도 동일하게 표시 (사용자가 계속 작업할 수 있도록)
             rightImage.src = workData.download_url;
             rightImageLabel.textContent =
               workData.type === "upscale"
                 ? `${workData.scale}x 업스케일 완료 ✨`
+                : workData.type === "vectorize"
+                ? `📐 벡터화 완료 (${workData.n_colors}색상, ${Math.round(
+                    workData.file_size / 1024
+                  )}KB) ✨`
                 : "배경 제거 완료 ✨";
 
             // 현재 이미지 파일 상태 설정 (추가 처리를 위해)
@@ -2822,7 +3306,7 @@
                 console.error("❌ 이미지 파일 복원 실패:", error);
               });
 
-            // 투명도 배경 설정 (배경 제거인 경우)
+            // 투명도 배경 설정 (배경 제거인 경우만)
             if (workData.type === "image") {
               rightImage.parentElement.classList.add("transparency-bg");
               updateRightActionButtons(true);

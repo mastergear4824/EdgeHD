@@ -307,12 +307,26 @@ echo.
 echo ========================================
 echo Configuring AI models...
 echo ========================================
+
+:: Set environment variables for project-local model storage
+echo INFO: Setting up project-local model storage...
+set HF_HOME=%cd%\models
+set TRANSFORMERS_CACHE=%cd%\models
+set HUGGINGFACE_HUB_CACHE=%cd%\models
+
+:: Test environment variables
+echo INFO: Project-local model storage configured:
+echo    HF_HOME=%HF_HOME%
+echo    TRANSFORMERS_CACHE=%TRANSFORMERS_CACHE%
+echo    HUGGINGFACE_HUB_CACHE=%HUGGINGFACE_HUB_CACHE%
+
 echo    All AI models will be stored in project models\ directory
 echo    AI models downloaded on first run:
 echo       * BiRefNet background removal model (~424MB)
 echo       * Real-ESRGAN General v3 4x upscaling model (~17MB)
 echo       * v0.3.0 supports only 4x (no 2x dedicated model)
 echo    Models are managed independently per project
+echo    WARNING: Never stored in system cache (~/.cache/huggingface/)
 echo SUCCESS: AI model configuration completed.
 
 echo.
@@ -354,6 +368,7 @@ echo.
 echo :: Set environment variables for project-local model storage
 echo set HF_HOME=%%cd%%\models
 echo set TRANSFORMERS_CACHE=%%cd%%\models
+echo set HUGGINGFACE_HUB_CACHE=%%cd%%\models
 echo.
 echo echo INFO: Starting with PyTorch 2.1.0 and Real-ESRGAN v0.3.0 compatibility
 echo python app.py

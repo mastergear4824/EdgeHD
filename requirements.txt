@@ -25,10 +25,39 @@ realesrgan==0.3.0     # AI 업스케일링 (General v3 모델)
 # 유틸리티
 requests>=2.31.0
 
-# 주의사항:
-# 1. Apple Silicon 사용자는 PYTORCH_ENABLE_MPS_FALLBACK=1 환경변수 설정 필요
-# 2. GPU 가속을 위해 적절한 PyTorch 버전 설치 (CUDA/MPS)
-# 3. 시스템에 따라 torch 설치 방법이 다를 수 있음:
+# 이미지 벡터화 (선택사항 - 시스템에 potrace 설치 권장)
+# potrace는 별도 시스템 설치 필요:
+# - macOS: brew install potrace
+# - Ubuntu/Debian: sudo apt-get install potrace
+# - Windows: https://potrace.sourceforge.net/
+
+# 🚨 중요 주의사항:
+
+# 1. AI 모델 프로젝트 로컬 저장 (필수!)
+#    install.sh / install.bat 사용 시 자동 설정됨
+#    수동 설치 시 반드시 다음 환경변수 설정:
+#    
+#    Linux/macOS:
+#      export HF_HOME="$(pwd)/models"
+#      export TRANSFORMERS_CACHE="$(pwd)/models"
+#      export HUGGINGFACE_HUB_CACHE="$(pwd)/models"
+#    
+#    Windows:
+#      set HF_HOME=%cd%\models
+#      set TRANSFORMERS_CACHE=%cd%\models
+#      set HUGGINGFACE_HUB_CACHE=%cd%\models
+#
+#    ⚠️ 이 설정 없이는 모델이 시스템 캐시(~/.cache/huggingface/)에 저장됨!
+
+# 2. Apple Silicon 사용자는 PYTORCH_ENABLE_MPS_FALLBACK=1 환경변수 설정 필요
+
+# 3. GPU 가속을 위해 적절한 PyTorch 버전 설치 (CUDA/MPS)
+
+# 4. 시스템에 따라 torch 설치 방법이 다를 수 있음:
 #    - Apple Silicon: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0
 #    - CUDA 11.8: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu118
-#    - CPU only: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu 
+#    - CPU only: pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cpu
+
+# 5. 프로젝트 독립성 확인:
+#    올바른 위치: ./models/hub/ (프로젝트 내)
+#    잘못된 위치: ~/.cache/huggingface/hub/ (시스템 캐시) 

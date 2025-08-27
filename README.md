@@ -1,6 +1,6 @@
-# AI 이미지/비디오 처리 도구 🎨🎬
+# AI 이미지/비디오 처리 도구 🎨🎬📐
 
-고품질 AI 배경 제거와 이미지/비디오 업스케일링을 제공하는 웹 애플리케이션입니다.
+고품질 AI 배경 제거, 이미지/비디오 업스케일링, 그리고 이미지 벡터화를 제공하는 통합 웹 애플리케이션입니다.
 
 ## ✨ 주요 기능
 
@@ -8,6 +8,7 @@
 
 - **🎯 고품질 AI 배경 제거**: BiRefNet 모델을 사용한 85% 성공률의 정밀한 배경 제거
 - **📈 AI 업스케일링**: Real-ESRGAN General v3 4x 고품질 이미지 확대 (v0.3.0)
+- **📐 이미지 벡터화**: AI 전처리 + Potrace로 래스터 이미지를 고품질 SVG 벡터로 변환 (NEW!)
 - **🔄 연속 처리**: 배경 제거 → 업스케일 또는 업스케일 → 배경 제거 등 자유로운 조합
 
 ### 🎬 비디오 처리 (NEW!)
@@ -366,13 +367,48 @@ pip install einops>=0.6.0 kornia>=0.7.0 timm>=0.9.0 realesrgan==0.3.0
 
 **📝 참고**: PyTorch와 transformers는 3단계에서 이미 설치했으므로 requirements.txt에서 제외되었습니다.
 
+### 5. 이미지 벡터화 기능 (선택사항)
+
+**📐 새로운 기능**: 래스터 이미지를 무한 확대 가능한 SVG 벡터로 변환
+
+#### 고품질 벡터화를 위한 Potrace 설치 (권장)
+
+**macOS**:
+
+```bash
+brew install potrace
+```
+
+**Ubuntu/Debian**:
+
+```bash
+sudo apt-get update
+sudo apt-get install potrace
+```
+
+**Windows**:
+
+- [Potrace 공식 사이트](https://potrace.sourceforge.net/)에서 다운로드
+- `potrace.exe`를 PATH에 추가하거나 프로젝트 폴더에 복사
+
+#### 설치 확인
+
+```bash
+potrace --version
+```
+
+**📝 참고**:
+
+- Potrace가 설치되지 않아도 내장 벡터화 엔진으로 동작합니다
+- 기존 배경 제거/업스케일링 기능에는 영향을 주지 않습니다
+
 # 설치 확인
 
 pip list | grep -E "(torch|transformers|einops|kornia|timm|realesrgan)"
 
 ````
 
-### 5. 환경 변수 설정 (Apple Silicon)
+### 6. 환경 변수 설정 (Apple Silicon)
 
 ```bash
 # Apple Silicon MPS 폴백 활성화
@@ -473,6 +509,36 @@ cd /path/to/EdgeHD && conda activate edgehd && export PYTORCH_ENABLE_MPS_FALLBAC
    - 우클릭으로 이미지 저장
    - 투명 배경은 체크보드 패턴으로 표시
 
+### 📐 이미지 벡터화 기능 (NEW!)
+
+이미지 처리 모드에서 벡터화 기능을 바로 사용할 수 있습니다:
+
+1. **이미지 업로드**:
+
+   - 🖼️ 이미지 처리 모드에서 이미지 업로드
+   - 지원 형식: PNG, JPG, JPEG, GIF, BMP, WebP
+
+2. **벡터화 버튼 클릭**:
+
+   - 업로드된 이미지 하단의 "📐 벡터화" 버튼 클릭
+
+3. **옵션 선택**:
+
+   - **색상 수**: 4색상(로고) ~ 32색상(복잡한 이미지)
+   - **출력 형식**: SVG (벡터)
+   - 팝업에서 옵션 선택 후 "📐 벡터화 시작" 클릭
+
+4. **자동 처리**:
+
+   - AI 전처리 (노이즈 제거, 엣지 강화)
+   - 색상 최적화 및 벡터 경로 생성
+   - 실시간 진행률 표시
+
+5. **결과 다운로드**:
+   - 우측 패널에서 SVG 파일 다운로드
+   - 무한 확대/축소 가능한 벡터 이미지
+   - "✨ 계속 편집"으로 추가 처리 가능
+
 ### 🎬 비디오 처리 워크플로우 (NEW!)
 
 1. **비디오 업로드**:
@@ -532,7 +598,9 @@ cd /path/to/EdgeHD && conda activate edgehd && export PYTORCH_ENABLE_MPS_FALLBAC
 #### 이미지
 
 - **입력**: BMP, GIF, JPEG, JPG, PNG, WebP
-- **출력**: PNG (투명 배경 지원)
+- **출력**:
+  - **배경 제거/업스케일링**: PNG (투명 배경 지원)
+  - **벡터화**: SVG (무한 확대 가능한 벡터)
 
 #### 비디오
 
@@ -733,6 +801,7 @@ EdgeHD/
 ├── app.py                 # 메인 Flask 애플리케이션
 │                         # • /upload (이미지 배경 제거)
 │                         # • /upscale (이미지 업스케일링)
+│                         # • /vectorize (이미지 벡터화) NEW!
 │                         # • /process_video (비디오 프레임별 처리)
 │                         # • /extract_last_frame (마지막 프레임 추출) NEW!
 │                         # • /download/<filename> (파일 다운로드)
@@ -740,10 +809,10 @@ EdgeHD/
 │   └── hub/             # Hugging Face 모델 캐시
 │       └── models--zhengpeng7--BiRefNet/  # 배경 제거 모델 (~424MB)
 ├── templates/            # HTML 템플릿
-│   └── index.html       # 메인 웹 인터페이스 (마지막 프레임 추출 UI 포함)
+│   └── index.html       # 메인 웹 인터페이스 (벡터화 + 마지막 프레임 추출 UI 포함)
 ├── static/              # 정적 파일 (CSS, JS)
 ├── uploads/             # 업로드된 파일
-├── downloads/           # 처리된 결과 파일 (이미지, 비디오, 추출된 프레임)
+├── downloads/           # 처리된 결과 파일 (이미지, 비디오, SVG 벡터, 추출된 프레임)
 ├── temp/               # 임시 처리 파일 (비디오 프레임 분해용)
 ├── requirements.txt     # Python 의존성 (PyTorch 2.1.0, transformers 4.35.0)
 ├── install.sh          # Linux/macOS 설치 스크립트
@@ -757,11 +826,40 @@ EdgeHD/
 
 ## 🤖 AI 모델 관리
 
-### 프로젝트 독립 모델 저장
+### 프로젝트 독립 모델 저장 (중요!)
 
-- **모든 AI 모델이 프로젝트 내 `models/` 디렉토리에 저장됩니다**
-- 시스템 전역 캐시(`~/.cache/huggingface/`)가 아닌 프로젝트 로컬 저장
-- 프로젝트 이동 시 모델도 함께 이동되어 완전한 독립성 보장
+> **🚨 경고**: 설치 스크립트 사용 시 **자동으로 프로젝트 로컬 저장**됩니다. 수동 설치 시 반드시 환경변수를 설정해야 합니다!
+
+#### ✅ 자동 로컬 저장 (설치 스크립트 사용)
+
+- **install.sh / install.bat 사용 시**: 자동으로 프로젝트 내 `models/` 디렉토리에 저장
+- **환경변수 자동 설정**: `HF_HOME`, `TRANSFORMERS_CACHE`, `HUGGINGFACE_HUB_CACHE`
+- **완전한 프로젝트 독립성**: 시스템 캐시(`~/.cache/huggingface/`)에 저장되지 않음
+
+#### ⚠️ 수동 설치 시 필수 환경변수 설정
+
+**Linux/macOS**:
+
+```bash
+export HF_HOME="$(pwd)/models"
+export TRANSFORMERS_CACHE="$(pwd)/models"
+export HUGGINGFACE_HUB_CACHE="$(pwd)/models"
+```
+
+**Windows**:
+
+```cmd
+set HF_HOME=%cd%\models
+set TRANSFORMERS_CACHE=%cd%\models
+set HUGGINGFACE_HUB_CACHE=%cd%\models
+```
+
+#### 🎯 장점
+
+- **프로젝트 이동 시 모델도 함께 이동되어 완전한 독립성 보장**
+- **시스템 전역 캐시 오염 방지**
+- **다른 프로젝트와 모델 충돌 없음**
+- **프로젝트 삭제 시 모델도 함께 정리**
 
 ### 첫 실행 시 모델 다운로드
 
@@ -774,8 +872,8 @@ EdgeHD/
 ### 모델 저장 위치
 
 ```bash
-models/
-├── hub/
+models/                              # 🔒 프로젝트 로컬 전용!
+├── hub/                            # HuggingFace 모델 저장소
 │   └── models--zhengpeng7--BiRefNet/
 │       ├── snapshots/
 │       │   └── [commit-hash]/
@@ -785,9 +883,14 @@ models/
 │       │       └── BiRefNet_config.py   # 설정 파일
 │       ├── blobs/
 │       └── refs/
-└── realesrgan/
-    └── realesr-general-x4v3.pth    # General v3 4x 업스케일링 모델 (v0.3.0)
+├── realesrgan/
+│   └── realesr-general-x4v3.pth    # General v3 4x 업스케일링 모델
+└── potrace                         # 🆕 벡터화 도구 (로컬 설치)
 ```
+
+> **✅ 확인 방법**: 모델이 올바른 위치에 저장되었는지 확인
+>
+> **잘못된 위치** (시스템 캐시): `~/.cache/huggingface/hub/` > **올바른 위치** (프로젝트 로컬): `./models/hub/`
 
 ### Git 버전 관리
 
@@ -914,6 +1017,7 @@ python app.py
 **🌟 특징**
 
 - 🖼️ **이미지 처리**: 고품질 AI 배경 제거 및 업스케일링
+- 📐 **이미지 벡터화**: AI 전처리 + Potrace로 SVG 벡터 변환 (NEW!)
 - 🎬 **비디오 처리**: 프레임별 AI 처리 및 재조립
 - 📸 **마지막 프레임 추출**: 비디오에서 마지막 프레임을 이미지로 빠르게 추출 (NEW!)
 - 🖥️ **크로스 플랫폼**: Windows, macOS, Linux 완벽 지원

@@ -206,8 +206,10 @@ yarn-debug.log*
 yarn-error.log*
 .npm
 .yarn-integrity
-package-lock.json
-frontend/package-lock.json
+
+# Package lock files (선택적으로 추가)
+# package-lock.json
+# frontend/package-lock.json
 
 # Next.js
 frontend/.next/
@@ -219,4 +221,4 @@ frontend/.env.production
 # 개발용 파일
 test_images/
 samples/
-*.test 
+*.test

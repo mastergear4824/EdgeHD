@@ -1,12 +1,17 @@
 @echo off
 setlocal enabledelayedexpansion
 
-set BACKEND_PID_FILE=backend.pid
-set FRONTEND_PID_FILE=frontend.pid
-set BACKEND_LOG=backend.log
-set FRONTEND_LOG=frontend.log
-set BACKEND_ERROR_LOG=backend_error.log
-set FRONTEND_ERROR_LOG=frontend_error.log
+:: Set script variables
+set "SCRIPT_DIR=%~dp0"
+set "BACKEND_DIR=%SCRIPT_DIR%backend"
+set "FRONTEND_DIR=%SCRIPT_DIR%frontend"
+
+set BACKEND_PID_FILE=%SCRIPT_DIR%backend.pid
+set FRONTEND_PID_FILE=%SCRIPT_DIR%frontend.pid
+set BACKEND_LOG=%SCRIPT_DIR%backend.log
+set FRONTEND_LOG=%SCRIPT_DIR%frontend.log
+set BACKEND_ERROR_LOG=%SCRIPT_DIR%backend_error.log
+set FRONTEND_ERROR_LOG=%SCRIPT_DIR%frontend_error.log
 
 echo ========================================
 echo EdgeHD 2.0 - Full-Stack Platform
@@ -15,39 +20,64 @@ echo ========================================
 echo.
 
 :: Check if already running
+echo [Pre-check] Checking for existing services...
+
 if exist "%BACKEND_PID_FILE%" (
     set /p BACKEND_PID=<"%BACKEND_PID_FILE%"
-    tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
+    :: Validate PID is numeric
+    echo !BACKEND_PID!| findstr /r "^[0-9][0-9]*$" >nul
     if not errorlevel 1 (
-        echo ERROR: Backend already running (PID: !BACKEND_PID!)
-        echo    To stop: stop.bat
-        pause
-        exit /b 1
-    ) else (
-        echo INFO: Cleaning up old backend PID file...
-        del "%BACKEND_PID_FILE%" 2>nul
+        tasklist /FI "PID eq !BACKEND_PID!" 2>nul | find "!BACKEND_PID!" >nul
+        if not errorlevel 1 (
+            echo ERROR: Backend already running (PID: !BACKEND_PID!)
+            echo    To stop: stop.bat
+            pause
+            exit /b 1
+        )
     )
+    echo INFO: Cleaning up stale backend PID file...
+    del "%BACKEND_PID_FILE%" 2>nul
 )
 
 if exist "%FRONTEND_PID_FILE%" (
     set /p FRONTEND_PID=<"%FRONTEND_PID_FILE%"
-    tasklist /FI "PID eq !FRONTEND_PID!" 2>nul | find "!FRONTEND_PID!" >nul
+    :: Validate PID is numeric  
+    echo !FRONTEND_PID!| findstr /r "^[0-9][0-9]*$" >nul
     if not errorlevel 1 (
-        echo ERROR: Frontend already running (PID: !FRONTEND_PID!)
-        echo    To stop: stop.bat
-        pause
-        exit /b 1
-    ) else (
-        echo INFO: Cleaning up old frontend PID file...
-        del "%FRONTEND_PID_FILE%" 2>nul
+        tasklist /FI "PID eq !FRONTEND_PID!" 2>nul | find "!FRONTEND_PID!" >nul
+        if not errorlevel 1 (
+            echo ERROR: Frontend already running (PID: !FRONTEND_PID!)
+            echo    To stop: stop.bat
+            pause
+            exit /b 1
+        )
     )
+    echo INFO: Cleaning up stale frontend PID file...
+    del "%FRONTEND_PID_FILE%" 2>nul
+)
+
+:: Check port availability
+netstat -an | find ":8080" | find "LISTENING" >nul
+if not errorlevel 1 (
+    echo ERROR: Port 8080 is already in use.
+    echo    Another service may be running on this port.
+    pause
+    exit /b 1
+)
+
+netstat -an | find ":3000" | find "LISTENING" >nul
+if not errorlevel 1 (
+    echo ERROR: Port 3000 is already in use.
+    echo    Another service may be running on this port.
+    pause
+    exit /b 1
 )
 
 :: Check environments
 echo [1/4] Checking environments...
 where conda >nul 2>&1
 if errorlevel 1 (
-    echo ERROR: Conda not found. Please run install.bat first.
+    echo ERROR: Conda not found in PATH. Please run install.bat first.
     pause
     exit /b 1
 )
@@ -59,9 +89,14 @@ if errorlevel 1 (
     exit /b 1
 )
 
-node --version >nul 2>&1
-if errorlevel 1 (
-    echo ERROR: Node.js not found. Please run install.bat first.
+if not exist "%FRONTEND_DIR%\node_modules" (
+    echo ERROR: Frontend dependencies not found. Please run install.bat first.
+    pause
+    exit /b 1
+)
+
+if not exist "%SCRIPT_DIR%node_modules" (
+    echo ERROR: Root dependencies not found. Please run install.bat first.
     pause
     exit /b 1
 )
@@ -70,48 +105,36 @@ echo SUCCESS: All environments ready.
 
 :: Initialize log files
 echo [2/4] Initializing log files...
-echo. > "%BACKEND_LOG%"
-echo. > "%FRONTEND_LOG%"
+echo %DATE% %TIME% - Backend server starting... > "%BACKEND_LOG%"
+echo %DATE% %TIME% - Frontend server starting... > "%FRONTEND_LOG%"
 echo. > "%BACKEND_ERROR_LOG%"
 echo. > "%FRONTEND_ERROR_LOG%"
 
 :: Start backend server
 echo [3/4] Starting backend server...
-call conda activate edgehd
-if errorlevel 1 (
-    echo ERROR: Failed to activate conda environment.
-    pause
-    exit /b 1
-)
 
-:: Set environment variables for backend
-set "HF_HOME=%cd%\backend\models"
-set "TRANSFORMERS_CACHE=%cd%\backend\models"
-set "HUGGINGFACE_HUB_CACHE=%cd%\backend\models"
-
-:: Create backend startup script
-echo @echo off > temp_backend.bat
-echo call conda activate edgehd >> temp_backend.bat
-echo set "HF_HOME=%cd%\backend\models" >> temp_backend.bat
-echo set "TRANSFORMERS_CACHE=%cd%\backend\models" >> temp_backend.bat
-echo set "HUGGINGFACE_HUB_CACHE=%cd%\backend\models" >> temp_backend.bat
-echo cd backend >> temp_backend.bat
-echo python app.py >> temp_backend.bat
+:: Create backend startup batch file
+echo @echo off > "%SCRIPT_DIR%temp_backend.bat"
+echo call conda activate edgehd >> "%SCRIPT_DIR%temp_backend.bat"
+echo if errorlevel 1 exit /b 1 >> "%SCRIPT_DIR%temp_backend.bat"
+echo set "HF_HOME=%SCRIPT_DIR%backend\models" >> "%SCRIPT_DIR%temp_backend.bat"
+echo set "TRANSFORMERS_CACHE=%SCRIPT_DIR%backend\models" >> "%SCRIPT_DIR%temp_backend.bat"
+echo set "HUGGINGFACE_HUB_CACHE=%SCRIPT_DIR%backend\models" >> "%SCRIPT_DIR%temp_backend.bat"
+echo cd /d "%BACKEND_DIR%" >> "%SCRIPT_DIR%temp_backend.bat"
+echo python app.py >> "%SCRIPT_DIR%temp_backend.bat"
 
 :: Start backend in background
-start /B cmd /c "temp_backend.bat 1>%BACKEND_LOG% 2>%BACKEND_ERROR_LOG%"
+start /B "" cmd /c ""%SCRIPT_DIR%temp_backend.bat" 1>"%BACKEND_LOG%" 2>"%BACKEND_ERROR_LOG%""
 
 :: Wait for backend initialization
-timeout /t 3 >nul
+echo INFO: Waiting for backend to initialize...
+timeout /t 5 >nul
 
-:: Find backend Python process
+:: Find backend Python process using port
 set BACKEND_PID=
-for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO CSV /NH 2^>nul') do (
-    set "TEMP_PID=%%~a"
-    set "TEMP_PID=!TEMP_PID:"=!"
-    
-    :: Check if this process is using port 8080
-    netstat -ano | find "8080" | find "!TEMP_PID!" >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -ano ^| find ":8080" ^| find "LISTENING"') do (
+    set "TEMP_PID=%%a"
+    tasklist /FI "PID eq !TEMP_PID!" 2>nul | find "python.exe" >nul
     if not errorlevel 1 (
         set "BACKEND_PID=!TEMP_PID!"
         goto :backend_found
@@ -121,10 +144,13 @@ for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq python.exe" /FO C
 :backend_found
 if not defined BACKEND_PID (
     echo ERROR: Failed to start backend server.
+    echo INFO: Checking backend error log...
     if exist "%BACKEND_ERROR_LOG%" (
-        echo Backend error log:
+        echo ===== Backend Error Log =====
         type "%BACKEND_ERROR_LOG%"
+        echo =============================
     )
+    del "%SCRIPT_DIR%temp_backend.bat" 2>nul
     pause
     exit /b 1
 )
@@ -134,28 +160,26 @@ echo SUCCESS: Backend started (PID: %BACKEND_PID%)
 
 :: Start frontend server
 echo [4/4] Starting frontend server...
-cd frontend
 
-:: Create frontend startup script
-echo @echo off > ..\temp_frontend.bat
-echo cd frontend >> ..\temp_frontend.bat
-echo npm run build >> ..\temp_frontend.bat
-echo npm start >> ..\temp_frontend.bat
+:: Create frontend startup batch file
+echo @echo off > "%SCRIPT_DIR%temp_frontend.bat"
+echo cd /d "%FRONTEND_DIR%" >> "%SCRIPT_DIR%temp_frontend.bat"
+echo npm run build >> "%SCRIPT_DIR%temp_frontend.bat"
+echo if errorlevel 1 exit /b 1 >> "%SCRIPT_DIR%temp_frontend.bat"
+echo npm start >> "%SCRIPT_DIR%temp_frontend.bat"
 
 :: Start frontend in background
-start /B cmd /c "..\temp_frontend.bat 1>..\%FRONTEND_LOG% 2>..\%FRONTEND_ERROR_LOG%"
+start /B "" cmd /c ""%SCRIPT_DIR%temp_frontend.bat" 1>"%FRONTEND_LOG%" 2>"%FRONTEND_ERROR_LOG%""
 
 :: Wait for frontend initialization
-timeout /t 5 >nul
+echo INFO: Waiting for frontend to initialize...
+timeout /t 8 >nul
 
-:: Find frontend Node process
+:: Find frontend Node process using port
 set FRONTEND_PID=
-for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq node.exe" /FO CSV /NH 2^>nul') do (
-    set "TEMP_PID=%%~a"
-    set "TEMP_PID=!TEMP_PID:"=!"
-    
-    :: Check if this process is using port 3000
-    netstat -ano | find "3000" | find "!TEMP_PID!" >nul 2>&1
+for /f "tokens=5" %%a in ('netstat -ano ^| find ":3000" ^| find "LISTENING"') do (
+    set "TEMP_PID=%%a"
+    tasklist /FI "PID eq !TEMP_PID!" 2>nul | find "node.exe" >nul
     if not errorlevel 1 (
         set "FRONTEND_PID=!TEMP_PID!"
         goto :frontend_found
@@ -165,10 +189,13 @@ for /f "tokens=2 delims=," %%a in ('tasklist /FI "IMAGENAME eq node.exe" /FO CSV
 :frontend_found
 if not defined FRONTEND_PID (
     echo ERROR: Failed to start frontend server.
+    echo INFO: Checking frontend error log...
     if exist "%FRONTEND_ERROR_LOG%" (
-        echo Frontend error log:
+        echo ===== Frontend Error Log =====
         type "%FRONTEND_ERROR_LOG%"
+        echo ===============================
     )
+    del "%SCRIPT_DIR%temp_frontend.bat" 2>nul
     pause
     exit /b 1
 )
@@ -176,14 +203,31 @@ if not defined FRONTEND_PID (
 echo %FRONTEND_PID% > "%FRONTEND_PID_FILE%"
 echo SUCCESS: Frontend started (PID: %FRONTEND_PID%)
 
-cd ..
-
 :: Clean up temporary files
-del temp_backend.bat >nul 2>&1
-del temp_frontend.bat >nul 2>&1
+del "%SCRIPT_DIR%temp_backend.bat" >nul 2>&1
+del "%SCRIPT_DIR%temp_frontend.bat" >nul 2>&1
 
-:: Verify both servers are running
-timeout /t 2 >nul
+:: Final verification
+echo.
+echo INFO: Performing final verification...
+timeout /t 3 >nul
+
+:: Verify both processes are still running
+tasklist /FI "PID eq %BACKEND_PID%" 2>nul | find "%BACKEND_PID%" >nul
+if errorlevel 1 (
+    echo ERROR: Backend process died after startup.
+    echo    Check %BACKEND_ERROR_LOG% for details.
+    pause
+    exit /b 1
+)
+
+tasklist /FI "PID eq %FRONTEND_PID%" 2>nul | find "%FRONTEND_PID%" >nul
+if errorlevel 1 (
+    echo ERROR: Frontend process died after startup.
+    echo    Check %FRONTEND_ERROR_LOG% for details.
+    pause
+    exit /b 1
+)
 
 echo.
 echo SUCCESS: EdgeHD 2.0 Full-Stack Platform started successfully!
@@ -197,20 +241,12 @@ echo.
 echo ACCESS URLs:
 echo    * Frontend UI: http://localhost:3000
 echo    * Backend API: http://localhost:8080
-echo    * Network: http://^<computer-ip^>:3000
 echo.
 echo USEFUL COMMANDS:
 echo    * Check status: status.bat
 echo    * View backend logs: type %BACKEND_LOG%
 echo    * View frontend logs: type %FRONTEND_LOG%
 echo    * Stop servers: stop.bat
-echo.
-echo FEATURES:
-echo    * Modern React UI with shadcn/ui components
-echo    * AI-powered image processing (background removal, upscaling)
-echo    * Real-time progress tracking
-echo    * Drag & drop file uploads
-echo    * Video processing capabilities
 echo.
 
 pause

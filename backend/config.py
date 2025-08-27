@@ -9,15 +9,15 @@ BASE_DIR = Path(__file__).parent
 
 # Server Configuration
 HOST = os.getenv('HOST', '0.0.0.0')
-PORT = int(os.getenv('PORT', 8080))
+PORT = int(os.getenv('PORT', 9090))
 DEBUG = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
 
 # CORS Configuration
-FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:8080')
 ALLOWED_ORIGINS = [
     FRONTEND_URL,
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
+    'http://localhost:8080',
+    'http://127.0.0.1:8080'
 ]
 
 # File Configuration

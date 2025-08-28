@@ -189,9 +189,29 @@ echo "SUCCESS: Conda is installed."
 echo
 echo "[3/5] Setting up backend environment..."
 
-# Create Conda environment
-echo "Creating Conda environment 'edgehd'..."
-conda create -n edgehd python=3.11 -y
+# Create Conda environment if conda is available
+if command -v conda &> /dev/null; then
+    echo "Creating Conda environment 'edgehd'..."
+    
+    # Check if environment already exists
+    if conda env list | grep -q "edgehd"; then
+        echo "INFO: Environment 'edgehd' already exists. Skipping creation."
+    else
+        # Try to accept Terms of Service automatically
+        echo "INFO: Checking conda Terms of Service..."
+        if ! conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main 2>/dev/null; then
+            echo "INFO: Attempting to accept Terms of Service with sudo..."
+            sudo conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main 2>/dev/null || true
+        fi
+        if ! conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r 2>/dev/null; then
+            echo "INFO: Attempting to accept Terms of Service with sudo..."
+            sudo conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r 2>/dev/null || true
+        fi
+        
+        conda create -n edgehd python=3.11 -y || handle_error "conda environment creation"
+        echo "SUCCESS: Conda environment 'edgehd' created successfully."
+    fi
+fi
 
 # Activate environment
 echo "Activating Conda environment..."

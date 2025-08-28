@@ -114,14 +114,25 @@ echo INFO: Proceeding with backend installation using conda.
 echo Creating Conda environment 'edgehd'...
 
 :: Check if environment already exists
-conda info --envs | findstr "edgehd" >nul 2>&1
+"%CONDA_PATH%" info --envs | findstr "edgehd" >nul 2>&1
 if not errorlevel 1 (
     echo INFO: Environment 'edgehd' already exists. Skipping creation.
     goto :activate_env
 )
 
+:: Try to accept Terms of Service automatically
+echo INFO: Checking conda Terms of Service...
+"%CONDA_PATH%" tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main >nul 2>&1
+if errorlevel 1 (
+    echo INFO: Terms of Service acceptance failed, but continuing...
+)
+"%CONDA_PATH%" tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r >nul 2>&1
+if errorlevel 1 (
+    echo INFO: Terms of Service acceptance failed, but continuing...
+)
+
 :: Create environment using simple conda command - Use Python 3.11 for better compatibility
-conda create -n edgehd python=3.11 -y
+"%CONDA_PATH%" create -n edgehd python=3.11 -y
 if errorlevel 1 (
     echo ERROR: Failed to create Conda environment.
     echo INFO: Please check if conda is properly installed and try again.

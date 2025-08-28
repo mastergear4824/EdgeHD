@@ -2,6 +2,7 @@
 
 echo "========================================"
 echo "EdgeHD 2.0 Full-Stack Platform Removal"
+echo "Professional Timeline Editor + AI Processing"
 echo "========================================"
 echo
 
@@ -24,6 +25,7 @@ echo "🎨 FRONTEND:"
 echo "   - Node.js dependencies (frontend/node_modules/)"
 echo "   - Frontend build files"
 echo "   - Next.js cache"
+echo "   - Timeline component assets"
 echo
 echo "📦 ROOT:"
 echo "   - Root dependencies (node_modules/)"
@@ -189,8 +191,9 @@ echo "🎉 EdgeHD 2.0 Full-Stack Platform removal completed!"
 echo
 echo "📋 WHAT WAS REMOVED:"
 echo "   • Backend: Python environment, AI models, dependencies"
-echo "   • Frontend: Node.js dependencies, build files, cache"
+echo "   • Frontend: Node.js dependencies, build files, cache, timeline assets"
 echo "   • Root: Project dependencies, logs, temporary files"
+echo "   • Timeline: Professional editing interface components"
 echo
 echo "🔄 TO REINSTALL:"
 echo "   chmod +x install.sh"

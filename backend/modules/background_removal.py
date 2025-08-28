@@ -98,13 +98,13 @@ class BiRefNetModel:
             input_tensor = self.transform(image).unsqueeze(0).to(self.device)
             
             if progress_callback:
-                progress_callback(90, "🔮 고품질 배경 제거 처리 중...")
+                progress_callback(90, "🔮 고품질 배경 제거 작업 중...")
             
             # 추론 실행
             with torch.no_grad():
                 preds = self.model(input_tensor)[-1].sigmoid().cpu()
             
-            # 마스크 후처리
+            # 마스크 후작업
             pred = preds[0].squeeze()
             pred_pil = transforms.ToPILImage()(pred)
             mask = pred_pil.resize(original_size, Image.Resampling.LANCZOS)
@@ -124,5 +124,5 @@ class BiRefNetModel:
         except Exception as e:
             print(f"❌ 배경 제거 실패: {e}")
             if progress_callback:
-                progress_callback(0, f"❌ 처리 실패: {str(e)}")
+                progress_callback(0, f"❌ 작업 실패: {str(e)}")
             raise

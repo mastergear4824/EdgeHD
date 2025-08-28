@@ -74,13 +74,13 @@ class RealESRGANUpscaleModel:
                 if progress_callback:
                     progress_callback(50, f"🤖 Real-ESRGAN {scale}x AI 업스케일링 중...")
                 
-                # PIL Image를 numpy array로 변환
+                # PIL Image를 numpy array로 작업
                 img_array = np.array(image)
                 
                 # Real-ESRGAN으로 업스케일링
                 output, _ = model.enhance(img_array, outscale=scale)
                 
-                # numpy array를 PIL Image로 변환
+                # numpy array를 PIL Image로 작업
                 upscaled_image = Image.fromarray(output)
                 
                 if progress_callback:

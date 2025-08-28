@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# Check for flags
+AUTO_DELETE_LOGS=false
+if [[ "$1" == "--y" ]]; then
+    AUTO_DELETE_LOGS=true
+elif [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
+    echo "EdgeHD 2.0 - Stop Script"
+    echo "Usage: $0 [OPTIONS]"
+    echo ""
+    echo "OPTIONS:"
+    echo "  --y        Automatically delete log files without prompting"
+    echo "  --help, -h Show this help message"
+    echo ""
+    exit 0
+fi
+
 # Set script variables
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_PID_FILE="$SCRIPT_DIR/backend.pid"
@@ -179,13 +194,18 @@ show_log_info
 
 # Cleanup option
 echo
-read -p "🗑️  Delete log files? (y/N): " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
+if [ "$AUTO_DELETE_LOGS" = true ]; then
     rm -f "$BACKEND_LOG" "$FRONTEND_LOG" "$BACKEND_ERROR_LOG" "$FRONTEND_ERROR_LOG"
-    echo "🗑️  Log files deleted."
+    echo "🗑️  Log files deleted automatically."
 else
-    echo "📄 Log files preserved."
+    read -p "🗑️  Delete log files? (y/N): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        rm -f "$BACKEND_LOG" "$FRONTEND_LOG" "$BACKEND_ERROR_LOG" "$FRONTEND_ERROR_LOG"
+        echo "🗑️  Log files deleted."
+    else
+        echo "📄 Log files preserved."
+    fi
 fi
 
 # Final status

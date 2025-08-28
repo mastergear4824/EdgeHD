@@ -56,7 +56,7 @@ def cleanup_temp_files(temp_dir, max_age_hours=24):
         print(f"❌ 임시 파일 정리 실패: {e}")
 
 def format_file_size(size_bytes):
-    """파일 크기를 읽기 쉬운 형태로 변환"""
+    """파일 크기를 읽기 쉬운 형태로 작업"""
     if size_bytes == 0:
         return "0B"
     
@@ -88,7 +88,7 @@ def get_image_info(image):
         return None
 
 def validate_image_file(file):
-    """업로드된 이미지 파일 유효성 검사"""
+    """업로드된 이미지 작업 유효성 검사"""
     allowed_extensions = {'bmp', 'gif', 'jpeg', 'jpg', 'png', 'webp'}
     max_file_size = 16 * 1024 * 1024  # 16MB
     

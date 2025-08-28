@@ -68,7 +68,7 @@ def load_session_storage():
                     if 'style_results' not in session and 'result_file' in session:
                         result_file = session.get('result_file', '')
                         if result_file.startswith('style_'):
-                            # 기존 스타일 변환 결과를 히스토리로 이동
+                            # 기존 스타일 작업 결과를 히스토리로 이동
                             session['style_results'] = [{
                                 'filename': result_file,
                                 'style': session.get('style', 'vangogh'),
@@ -91,27 +91,7 @@ def save_session_storage(storage):
     except Exception as e:
         print(f"⚠️ 세션 데이터 저장 실패: {e}")
 
-def get_latest_file_path(task_id):
-    """task_id에 해당하는 가장 최신 파일 경로 반환 (연속 작업을 위해)"""
-    if task_id not in session_storage:
-        return None
-    
-    session = session_storage[task_id]
-    
-    # 가장 최근 처리 결과 파일이 있으면 그것을 사용
-    if 'result_file' in session and session['result_file']:
-        result_path = DOWNLOAD_FOLDER / session['result_file']
-        if result_path.exists():
-            print(f"🔄 연속 작업: 최신 결과 파일 사용 - {session['result_file']}")
-            return result_path
-    
-    # 처리 결과가 없으면 원본 파일 사용
-    original_path = Path(session['file_path'])
-    if original_path.exists():
-        print(f"🔄 연속 작업: 원본 파일 사용 - {original_path.name}")
-        return original_path
-    
-    return None
+
 
 def update_session_data(work_id, data):
     """세션 데이터 업데이트 및 저장"""
@@ -129,7 +109,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def allowed_video_file(filename):
-    """허용된 비디오 파일 확장자인지 확인"""
+    """허용된 비디오 작업 확장자인지 확인"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
 
 # 초기 세션 데이터 로드
@@ -192,7 +172,7 @@ def upload_file():
         # 비디오 파일인 경우 전체 프레임 추출
         if is_video:
             try:
-                print(f"🎬 비디오 파일 감지: {file.filename}")
+                print(f"🎬 비디오 작업 감지: {file.filename}")
                 print(f"📹 전체 프레임 분해 시작...")
                 
                 # VideoProcessor 사용하여 전체 프레임 추출
@@ -270,10 +250,11 @@ def get_video_frames(task_id):
         if not frames_info:
             return jsonify({'error': '프레임 정보가 없습니다.'}), 404
         
-        # 프레임 URL 목록 생성
+        # 프레임 URL 목록 생성 - 새로운 비디오 프레임 API 사용
         frame_urls = []
-        for frame_file in frames_info.get('frame_files', []):
-            frame_urls.append(f'http://localhost:9090/api/download/{frame_file}')
+        frame_files = frames_info.get('frame_files', [])
+        for index, frame_file in enumerate(frame_files):
+            frame_urls.append(f'http://localhost:9090/api/video-frame/{task_id}/{index}')
         
         return jsonify({
             'task_id': task_id,
@@ -353,16 +334,33 @@ def update_video_frames(task_id):
 
 @app.route('/api/remove-background', methods=['POST'])
 def remove_background():
-    """배경 제거 처리"""
+    """배경 제거 작업"""
     try:
         task_id = request.form.get('task_id')
+        base_result_id = request.form.get('base_result_id')  # 작업 기준점
+        
         if not task_id or task_id not in session_storage:
             return jsonify({'error': '유효하지 않은 task_id입니다.'}), 400
             
-        # 최신 파일 경로 가져오기 (연속 작업 지원)
-        file_path = get_latest_file_path(task_id)
-        if not file_path:
-            return jsonify({'error': '처리할 파일을 찾을 수 없습니다.'}), 404
+        # 파일 경로 직접 결정
+        if base_result_id:
+            # 특정 히스토리 결과를 기준점으로 사용
+            print(f"🎯 특정 결과 기준점 사용: {base_result_id}")
+            file_path = None
+            if 'processing_history' in session_storage[task_id]:
+                for history_entry in session_storage[task_id]['processing_history']:
+                    if history_entry['id'] == base_result_id:
+                        file_path = DOWNLOAD_FOLDER / history_entry['filename']
+                        break
+            if not file_path or not file_path.exists():
+                return jsonify({'error': f'선택한 작업 결과를 찾을 수 없습니다: {base_result_id}'}), 404
+            print(f"✅ 기준점 파일 사용: {file_path}")
+        else:
+            # 원본 파일 사용
+            file_path = Path(session_storage[task_id]['file_path'])
+            if not file_path.exists():
+                return jsonify({'error': '원본 파일을 찾을 수 없습니다.'}), 404
+            print(f"📍 원본 파일 사용: {file_path}")
         
         # 이미지 로드
         image = Image.open(file_path).convert('RGB')
@@ -370,8 +368,9 @@ def remove_background():
         # 배경 제거
         result_image = ai_model.remove_background(image)
         
-        # 결과 저장
-        result_filename = f"removed_{task_id}.png"
+        # 고유한 결과 파일명 생성 (재실행 지원)
+        timestamp_ms = int(time.time() * 1000)
+        result_filename = f"removed_{task_id}_{timestamp_ms}.png"
         result_path = DOWNLOAD_FOLDER / result_filename
         
         if result_image.mode != 'RGBA':
@@ -379,7 +378,21 @@ def remove_background():
         
         result_image.save(result_path, 'PNG', optimize=True)
         
-        # 세션 업데이트
+        # 작업 히스토리에 추가
+        if 'processing_history' not in session_storage[task_id]:
+            session_storage[task_id]['processing_history'] = []
+        
+        processing_entry = {
+            'id': f"{task_id}_removed_{timestamp_ms}",
+            'actionId': 'remove_bg',
+            'actionLabel': '배경제거',
+            'filename': result_filename,
+            'processed_at': time.time(),
+            'status': 'completed'
+        }
+        session_storage[task_id]['processing_history'].append(processing_entry)
+        
+        # 세션 업데이트 (기존 방식도 유지 - 호환성)
         session_storage[task_id].update({
             'status': 'completed',
             'result_file': result_filename,
@@ -397,10 +410,10 @@ def remove_background():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 비디오 처리 API 추가
+# 비디오 작업 API 추가
 @app.route('/api/process-video', methods=['POST'])
 def process_video():
-    """비디오 배경 제거 처리"""
+    """비디오 배경 제거 작업"""
     try:
         task_id = request.form.get('task_id')
         if not task_id or task_id not in session_storage:
@@ -409,7 +422,7 @@ def process_video():
         session = session_storage[task_id]
         file_path = Path(session['file_path'])
         
-        # 비디오 처리
+        # 비디오 작업
         result_filename = f"video_processed_{task_id}.mp4"
         result_path = DOWNLOAD_FOLDER / result_filename
         
@@ -472,9 +485,10 @@ def extract_last_frame():
 
 @app.route('/api/upscale', methods=['POST'])
 def upscale_image():
-    """이미지 업스케일링 처리"""
+    """이미지 업스케일링 작업"""
     try:
         task_id = request.form.get('task_id')
+        base_result_id = request.form.get('base_result_id')  # 작업 기준점
         scale = int(request.form.get('scale', '4'))
         
         if not task_id or task_id not in session_storage:
@@ -483,26 +497,56 @@ def upscale_image():
         if scale not in [2, 4]:
             return jsonify({'error': '지원하지 않는 업스케일 배율입니다.'}), 400
             
-        # 최신 파일 경로 가져오기 (연속 작업 지원)
-        file_path = get_latest_file_path(task_id)
-        if not file_path:
-            return jsonify({'error': '처리할 파일을 찾을 수 없습니다.'}), 404
+        # 파일 경로 직접 결정
+        if base_result_id:
+            # 특정 히스토리 결과를 기준점으로 사용
+            print(f"🎯 특정 결과 기준점 사용: {base_result_id}")
+            file_path = None
+            if 'processing_history' in session_storage[task_id]:
+                for history_entry in session_storage[task_id]['processing_history']:
+                    if history_entry['id'] == base_result_id:
+                        file_path = DOWNLOAD_FOLDER / history_entry['filename']
+                        break
+            if not file_path or not file_path.exists():
+                return jsonify({'error': f'선택한 작업 결과를 찾을 수 없습니다: {base_result_id}'}), 404
+            print(f"✅ 기준점 파일 사용: {file_path}")
+        else:
+            # 원본 파일 사용
+            file_path = Path(session_storage[task_id]['file_path'])
+            if not file_path.exists():
+                return jsonify({'error': '원본 파일을 찾을 수 없습니다.'}), 404
+            print(f"📍 원본 파일 사용: {file_path}")
         
         # 이미지 로드
         image = Image.open(file_path)
         if image.mode not in ['RGB', 'RGBA']:
             image = image.convert('RGB')
         
-        # 업스케일링 처리
+        # 업스케일링 작업
         result_image = upscale_model.upscale_image(image, scale)
         
-        # 결과 저장
-        result_filename = f"upscaled_{scale}x_{task_id}.png"
+        # 고유한 결과 파일명 생성 (재실행 지원)
+        timestamp_ms = int(time.time() * 1000)
+        result_filename = f"upscaled_{scale}x_{task_id}_{timestamp_ms}.png"
         result_path = DOWNLOAD_FOLDER / result_filename
         
         result_image.save(result_path, 'PNG', optimize=True)
         
-        # 세션 업데이트
+        # 작업 히스토리에 추가
+        if 'processing_history' not in session_storage[task_id]:
+            session_storage[task_id]['processing_history'] = []
+        
+        processing_entry = {
+            'id': f"{task_id}_upscaled_{scale}x_{timestamp_ms}",
+            'actionId': f'upscale_{scale}x',
+            'actionLabel': f'업스케일링 x{scale}',
+            'filename': result_filename,
+            'processed_at': time.time(),
+            'status': 'completed'
+        }
+        session_storage[task_id]['processing_history'].append(processing_entry)
+        
+        # 세션 업데이트 (기존 방식도 유지 - 호환성)
         session_storage[task_id].update({
             'status': 'completed',
             'result_file': result_filename,
@@ -525,39 +569,86 @@ def upscale_image():
 
 @app.route('/api/vectorize', methods=['POST'])
 def vectorize_image():
-    """이미지 벡터화 처리"""
+    """이미지 벡터화 작업"""
     try:
         task_id = request.form.get('task_id')
+        base_result_id = request.form.get('base_result_id')  # 작업 기준점
+        
         if not task_id or task_id not in session_storage:
             return jsonify({'error': '유효하지 않은 task_id입니다.'}), 400
             
-        # 최신 파일 경로 가져오기 (연속 작업 지원)
-        file_path = get_latest_file_path(task_id)
-        if not file_path:
-            return jsonify({'error': '처리할 파일을 찾을 수 없습니다.'}), 404
+        # 파일 경로 직접 결정
+        if base_result_id:
+            # 특정 히스토리 결과를 기준점으로 사용
+            print(f"🎯 특정 결과 기준점 사용: {base_result_id}")
+            file_path = None
+            if 'processing_history' in session_storage[task_id]:
+                for history_entry in session_storage[task_id]['processing_history']:
+                    if history_entry['id'] == base_result_id:
+                        # 벡터화 작업에서 SVG 파일은 사용할 수 없음
+                        if history_entry['filename'].endswith('.svg'):
+                            return jsonify({'error': 'SVG 벡터화 결과는 다시 벡터화할 수 없습니다.'}), 400
+                        file_path = DOWNLOAD_FOLDER / history_entry['filename']
+                        break
+            if not file_path or not file_path.exists():
+                return jsonify({'error': f'선택한 작업 결과를 찾을 수 없습니다: {base_result_id}'}), 404
+            print(f"✅ 기준점 파일 사용: {file_path}")
+        else:
+            # 원본 파일 사용
+            file_path = Path(session_storage[task_id]['file_path'])
+            if not file_path.exists():
+                return jsonify({'error': '원본 파일을 찾을 수 없습니다.'}), 404
+            print(f"📍 원본 파일 사용: {file_path}")
         
         n_colors = int(request.form.get('n_colors', '8'))
         if n_colors < 2 or n_colors > 32:
             n_colors = 8
         
+        # 벡터화 모드 결정 (n_colors로 판단)
+        vectorize_mode = 'bw' if n_colors == 2 else 'color'
+        print(f"📐 벡터화 모드: {vectorize_mode}, 색상수: {n_colors}")
+        if base_result_id:
+            print(f"🎯 벡터화 기준점: {base_result_id}")
+        else:
+            print("📍 벡터화 기준점: 원본 이미지")
+        
         # 이미지 로드
         image = Image.open(file_path).convert('RGB')
         
-        # 벡터화 처리
-        svg_content = vectorizer_model.vectorize_image(image, n_colors=n_colors)
+        # 벡터화 작업
+        svg_content = vectorizer_model.vectorize_image(
+            image, 
+            n_colors=n_colors, 
+            vectorize_mode=vectorize_mode
+        )
         
-        # 결과 저장
-        result_filename = f"vectorized_{task_id}.svg"
+        # 고유한 결과 파일명 생성 (재실행 지원)
+        timestamp_ms = int(time.time() * 1000)
+        result_filename = f"vectorized_{task_id}_{timestamp_ms}.svg"
         result_path = DOWNLOAD_FOLDER / result_filename
         
         # SVG 내용을 파일로 저장
         with open(result_path, 'w', encoding='utf-8') as f:
             f.write(svg_content)
         
-        # 세션 업데이트
+        # 작업 히스토리에 추가
+        if 'processing_history' not in session_storage[task_id]:
+            session_storage[task_id]['processing_history'] = []
+        
+        processing_entry = {
+            'id': f"{task_id}_vectorized_{timestamp_ms}",
+            'actionId': 'vectorize',
+            'actionLabel': f'벡터화 ({n_colors}색)',
+            'filename': result_filename,
+            'processed_at': time.time(),
+            'status': 'completed'
+        }
+        session_storage[task_id]['processing_history'].append(processing_entry)
+        
+        # 벡터화는 result_file을 업데이트하지 않음 (SVG는 연속 작업의 기준점이 될 수 없음)
+        # processing_history에만 저장하여 히스토리에서 선택 가능하게 함
         session_storage[task_id].update({
             'status': 'completed',
-            'result_file': result_filename,
             'processed_at': time.time(),
             'n_colors': n_colors
         })
@@ -573,27 +664,39 @@ def vectorize_image():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# 스타일 변환 API
+# 스타일 작업 API
 @app.route('/api/style-transfer', methods=['POST'])
 def style_transfer():
-    """이미지 스타일 변환 처리"""
+    """이미지 스타일 작업 작업"""
     print("🚀 DEBUG: Entering style_transfer API endpoint.")
     try:
         task_id = request.form.get('task_id')
-        print(f"📝 DEBUG: Received task_id: {task_id}")
+        base_result_id = request.form.get('base_result_id')  # 작업 기준점
+        print(f"📝 DEBUG: Received task_id: {task_id}, base_result_id: {base_result_id}")
         
         if not task_id or task_id not in session_storage:
             print(f"❌ DEBUG: Invalid task_id: {task_id}")
             return jsonify({'error': '유효하지 않은 task_id입니다.'}), 400
 
-        # 스타일 변환은 항상 원본 파일 사용 (테스트용)
-        session = session_storage[task_id]
-        file_path = Path(session['file_path'])
-        print(f"📁 DEBUG: Using original file path: {file_path}")
-        
-        if not file_path:
-            print(f"❌ DEBUG: 처리할 파일을 찾을 수 없습니다: {task_id}")
-            return jsonify({'error': '처리할 파일을 찾을 수 없습니다.'}), 404
+        # 파일 경로 직접 결정
+        if base_result_id:
+            # 특정 히스토리 결과를 기준점으로 사용
+            print(f"🎯 특정 결과 기준점 사용: {base_result_id}")
+            file_path = None
+            if 'processing_history' in session_storage[task_id]:
+                for history_entry in session_storage[task_id]['processing_history']:
+                    if history_entry['id'] == base_result_id:
+                        file_path = DOWNLOAD_FOLDER / history_entry['filename']
+                        break
+            if not file_path or not file_path.exists():
+                return jsonify({'error': f'선택한 작업 결과를 찾을 수 없습니다: {base_result_id}'}), 404
+            print(f"✅ 기준점 파일 사용: {file_path}")
+        else:
+            # 원본 파일 사용
+            file_path = Path(session_storage[task_id]['file_path'])
+            if not file_path.exists():
+                return jsonify({'error': '원본 파일을 찾을 수 없습니다.'}), 404
+            print(f"📍 원본 파일 사용: {file_path}")
 
         style = request.form.get('style', 'vangogh')
         strength = float(request.form.get('strength', '1.0'))
@@ -612,7 +715,7 @@ def style_transfer():
             image = Image.open(file_path)
             print(f"📸 DEBUG: 원본 이미지 로드 성공: 크기={image.size}, 모드={image.mode}")
             image = image.convert('RGB')
-            print(f"📸 DEBUG: RGB 변환 후 이미지: 크기={image.size}, 모드={image.mode}")
+            print(f"📸 DEBUG: RGB 작업 후 이미지: 크기={image.size}, 모드={image.mode}")
             
             # 이미지가 검정색인지 확인
             if image.getbbox() is None:
@@ -621,21 +724,21 @@ def style_transfer():
                 print("✅ DEBUG: 로드된 이미지는 검정색이 아닙니다 (getbbox is not None).")
 
         except Exception as img_e:
-            print(f"❌ DEBUG: 이미지 로드 또는 변환 실패: {img_e}")
+            print(f"❌ DEBUG: 이미지 로드 또는 작업 실패: {img_e}")
             import traceback
             print(f"❌ DEBUG: 상세 오류 (이미지 로드): {traceback.format_exc()}")
-            return jsonify({'error': f'이미지 로드 또는 변환 실패: {img_e}'}), 500
+            return jsonify({'error': f'이미지 로드 또는 작업 실패: {img_e}'}), 500
 
-        # 스타일 변환 처리
-        print(f"🎨 DEBUG: 스타일 변환 시작: {style}, 강도={strength}")
+        # 스타일 작업 작업
+        print(f"🎨 DEBUG: 스타일 작업 시작: {style}, 강도={strength}")
         result_image = style_model.transfer_style(image, style=style, strength=strength)
-        print(f"📸 DEBUG: 변환 결과: 크기={result_image.size}, 모드={result_image.mode}")
+        print(f"📸 DEBUG: 작업 결과: 크기={result_image.size}, 모드={result_image.mode}")
         
         # 결과 이미지가 검정색인지 확인
         if result_image.getbbox() is None:
-            print("⚠️ DEBUG: 변환 결과 이미지가 완전히 검정색입니다 (getbbox is None).")
+            print("⚠️ DEBUG: 작업 결과 이미지가 완전히 검정색입니다 (getbbox is None).")
         else:
-            print("✅ DEBUG: 변환 결과 이미지는 검정색이 아닙니다 (getbbox is not None).")
+            print("✅ DEBUG: 작업 결과 이미지는 검정색이 아닙니다 (getbbox is not None).")
 
         # 결과 저장 (캐시 우회를 위해 타임스탬프 추가)
         import time
@@ -648,11 +751,33 @@ def style_transfer():
         result_image.save(result_path, 'PNG', optimize=True)
         print(f"✅ DEBUG: 파일 저장 완료: {result_filename}")
 
-        # 세션 업데이트 (스타일 변환 히스토리 관리)
+        # 세션 업데이트 (스타일 작업 히스토리 관리)
         if 'style_results' not in session_storage[task_id]:
             session_storage[task_id]['style_results'] = []
         
-        # 새로운 스타일 변환 결과 추가
+        # 새로운 스타일 작업 결과 추가
+        # processing_history에 추가 (통합된 히스토리 관리)
+        if 'processing_history' not in session_storage[task_id]:
+            session_storage[task_id]['processing_history'] = []
+        
+        # 스타일에 따른 액션 라벨 결정
+        action_label = '레트로' if style == 'vangogh' else '페인팅'
+        action_id = 'style_retro' if style == 'vangogh' else 'style_painting'
+        
+        processing_entry = {
+            'id': f"{task_id}_style_{style}_{timestamp}",
+            'actionId': action_id,
+            'actionLabel': action_label,
+            'filename': result_filename,
+            'processed_at': time.time(),
+            'status': 'completed'
+        }
+        session_storage[task_id]['processing_history'].append(processing_entry)
+        
+        # 레거시 호환성을 위해 style_results에도 추가 (하지만 중복 방지)
+        if 'style_results' not in session_storage[task_id]:
+            session_storage[task_id]['style_results'] = []
+        
         style_result = {
             'filename': result_filename,
             'style': style,
@@ -680,7 +805,7 @@ def style_transfer():
         })
 
     except Exception as e:
-        print(f"❌ DEBUG: 스타일 변환 API 오류: {e}")
+        print(f"❌ DEBUG: 스타일 작업 API 오류: {e}")
         import traceback
         print(f"❌ DEBUG: 상세 오류: {traceback.format_exc()}")
         return jsonify({'error': str(e)}), 500
@@ -751,7 +876,7 @@ def get_sessions():
 
 @app.route('/api/files', methods=['GET'])
 def get_files():
-    """업로드된 파일 목록과 처리 결과 조회"""
+    """업로드된 파일 목록과 작업 결과 조회"""
     try:
         files_list = []
         
@@ -786,42 +911,42 @@ def get_files():
                     elif ext in ['.mp4', '.avi', '.mov', '.wmv']:
                         file_info['fileType'] = f'video/{ext[1:]}'
             
-            # 일반 처리 결과 확인
-            if session.get('status') == 'completed' and 'result_file' in session:
-                result_filename = session['result_file']
-                action_type = ''
-                
-                # 결과 파일명으로 처리 유형 판단 (스타일 변환 제외)
-                if result_filename.startswith('removed_'):
-                    action_type = 'remove_bg'
-                elif result_filename.startswith('upscaled_'):
-                    if '2x' in result_filename:
-                        action_type = 'upscale_2x'
-                    elif '4x' in result_filename:
-                        action_type = 'upscale_4x'
-                    else:
-                        action_type = 'upscale'
-                elif result_filename.startswith('vectorized_'):
-                    action_type = 'vectorize'
-                elif result_filename.startswith('processed_'):
-                    action_type = 'process_video'
-                elif result_filename.startswith('last_frame_'):
-                    action_type = 'extract_last_frame'
-                
-                if action_type:
+            # 새로운 processing_history에서 히스토리 로드
+            if 'processing_history' in session:
+                for history_entry in session['processing_history']:
                     processing_result = {
-                        'id': f"{task_id}_{action_type}",
-                        'actionId': action_type,
-                        'actionLabel': get_action_label(action_type),
-                        'status': 'completed',
-                        'resultUrl': f'/api/download/{result_filename}',
-                        'resultPreviewUrl': f'/api/download/{result_filename}',
-                        'completedAt': session.get('processed_at', time.time())
+                        'id': history_entry['id'],
+                        'actionId': history_entry['actionId'],
+                        'actionLabel': history_entry['actionLabel'],
+                        'status': history_entry['status'],
+                        'resultUrl': f'/api/image/{task_id}/result/{history_entry["id"]}',
+                        'resultPreviewUrl': f'/api/image/{task_id}/result/{history_entry["id"]}',
+                        'completedAt': history_entry['processed_at']
                     }
                     file_info['processingResults'].append(processing_result)
             
-            # 스타일 변환 히스토리 추가
-            if 'style_results' in session:
+            # 기존 호환성을 위한 레거시 작업 결과 확인
+            if session.get('status') == 'completed' and 'result_file' in session:
+                # processing_history에 없는 결과인 경우에만 추가
+                result_filename = session['result_file']
+                existing_files = [h['filename'] for h in session.get('processing_history', [])]
+                
+                if result_filename not in existing_files:
+                    action_type = get_action_type_from_filename(result_filename)
+                    if action_type != 'unknown':
+                        processing_result = {
+                            'id': f"{task_id}_{action_type}",
+                            'actionId': action_type,
+                            'actionLabel': get_action_label(action_type),
+                            'status': 'completed',
+                            'resultUrl': f'/api/image/{task_id}/result/{task_id}_{action_type}',
+                            'resultPreviewUrl': f'/api/image/{task_id}/result/{task_id}_{action_type}',
+                            'completedAt': session.get('processed_at', time.time())
+                        }
+                        file_info['processingResults'].append(processing_result)
+            
+            # 스타일 작업 히스토리 추가 (레거시 호환성 - processing_history가 없는 경우에만)
+            if 'style_results' in session and 'processing_history' not in session:
                 for idx, style_result in enumerate(session['style_results']):
                     style_filename = style_result['filename']
                     style = style_result['style']
@@ -839,8 +964,8 @@ def get_files():
                         'actionId': action_type,
                         'actionLabel': get_action_label(action_type),
                         'status': 'completed',
-                        'resultUrl': f'/api/download/{style_filename}',
-                        'resultPreviewUrl': f'/api/download/{style_filename}',
+                        'resultUrl': f'/api/image/{task_id}/result/{task_id}_{action_type}_{idx}',
+                        'resultPreviewUrl': f'/api/image/{task_id}/result/{task_id}_{action_type}_{idx}',
                         'completedAt': style_result['processed_at']
                     }
                     file_info['processingResults'].append(processing_result)
@@ -860,7 +985,7 @@ def get_files():
         return jsonify({'error': str(e)}), 500
 
 def get_action_label(action_id):
-    """액션 ID를 한글 라벨로 변환"""
+    """액션 ID를 한글 라벨로 작업"""
     action_labels = {
         'remove_bg': '배경 제거',
         'upscale_2x': '업스케일링 x2',
@@ -869,7 +994,7 @@ def get_action_label(action_id):
         'vectorize': '벡터화',
         'style_retro': '레트로',
         'style_painting': '페인팅',
-        'style_transfer': '스타일 변환',
+        'style_transfer': '스타일 작업',
         'process_video': '비디오 배경 제거',
         'extract_last_frame': '마지막 프레임 추출'
     }
@@ -920,7 +1045,7 @@ def delete_file_complete(task_id):
         for file_path in download_files:
             if file_path.exists():
                 file_path.unlink()
-                print(f"🗑️ 처리 결과 파일 삭제: {file_path}")
+                print(f"🗑️ 작업 결과 파일 삭제: {file_path}")
         
         # 세션 데이터 삭제
         del session_storage[task_id]
@@ -940,6 +1065,239 @@ def delete_file_complete(task_id):
         print(f"❌ 파일 삭제 실패: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/delete-processing-result/<task_id>/<result_id>', methods=['DELETE'])
+def delete_processing_result(task_id, result_id):
+    """특정 작업 결과만 삭제"""
+    try:
+        print(f"🔍 DEBUG: 삭제 요청 - task_id: {task_id}, result_id: {result_id}")
+        
+        if task_id not in session_storage:
+            print(f"❌ DEBUG: task_id {task_id}가 session_storage에 없음")
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        session = session_storage[task_id]
+        filename_to_delete = None
+        deleted = False
+        
+        print(f"🔍 DEBUG: 세션 키들: {list(session.keys())}")
+        
+        # 1. 새로운 processing_history에서 찾기 (우선순위)
+        if 'processing_history' in session:
+            print(f"🔍 DEBUG: processing_history 개수: {len(session['processing_history'])}")
+            for i, history_entry in enumerate(session['processing_history']):
+                print(f"🔍 DEBUG: 히스토리 {i}: ID={history_entry['id']}, 파일={history_entry['filename']}")
+                if history_entry['id'] == result_id:
+                    filename_to_delete = history_entry['filename']
+                    # processing_history에서 제거
+                    session['processing_history'] = [h for h in session['processing_history'] if h['id'] != result_id]
+                    print(f"✅ DEBUG: processing_history에서 매칭된 파일: {filename_to_delete}")
+                    deleted = True
+                    break
+        
+        # 2. 기존 호환성: 일반 작업 결과 확인 (result_file 기반)
+        if not deleted and 'result_file' in session:
+            expected_id = f"{task_id}_{get_action_type_from_filename(session['result_file'])}"
+            print(f"🔍 DEBUG: 기존 방식 expected_id: {expected_id}")
+            if expected_id == result_id:
+                filename_to_delete = session['result_file']
+                # result_file 정보 제거
+                if 'result_file' in session:
+                    del session['result_file']
+                if 'processed_at' in session:
+                    del session['processed_at']
+                print(f"✅ DEBUG: 기존 방식에서 매칭된 파일: {filename_to_delete}")
+                deleted = True
+        
+        # 3. 기존 호환성: 스타일 작업 히스토리 확인
+        if not deleted and 'style_results' in session:
+            style_results = session['style_results']
+            print(f"🔍 DEBUG: style_results 개수: {len(style_results)}")
+            for idx, style_result in enumerate(style_results):
+                style = style_result['style']
+                action_type = 'style_transfer'
+                if style == 'vangogh':
+                    action_type = 'style_retro'
+                elif style == 'oil_painting':
+                    action_type = 'style_painting'
+                
+                expected_id = f"{task_id}_{action_type}_{idx}"
+                print(f"🔍 DEBUG: 스타일 expected_id: {expected_id}")
+                if expected_id == result_id:
+                    filename_to_delete = style_result['filename']
+                    # 해당 스타일 결과 제거
+                    session['style_results'] = [r for i, r in enumerate(style_results) if i != idx]
+                    print(f"✅ DEBUG: 스타일에서 매칭된 파일: {filename_to_delete}")
+                    deleted = True
+                    break
+        
+        if not deleted:
+            print(f"❌ DEBUG: result_id {result_id}를 어디서도 찾을 수 없음")
+            return jsonify({'error': '작업 결과를 찾을 수 없습니다.'}), 404
+        
+        # 파일 삭제
+        if filename_to_delete:
+            file_path = DOWNLOAD_FOLDER / filename_to_delete
+            if file_path.exists():
+                file_path.unlink()
+                print(f"🗑️ 작업 결과 파일 삭제: {file_path}")
+        
+        # 세션 저장
+        session_storage[task_id] = session
+        save_session_storage(session_storage)
+        
+        print(f"✅ 작업 결과 삭제 완료: {task_id}/{result_id}")
+        return jsonify({'message': '작업 결과가 성공적으로 삭제되었습니다.'})
+        
+    except Exception as e:
+        print(f"❌ 작업 결과 삭제 실패: {e}")
+        return jsonify({'error': str(e)}), 500
+
+def get_action_type_from_filename(filename):
+    """파일명으로부터 액션 타입 추출"""
+    if filename.startswith('removed_'):
+        return 'remove_bg'
+    elif filename.startswith('upscaled_'):
+        if '2x' in filename:
+            return 'upscale_2x'
+        elif '4x' in filename:
+            return 'upscale_4x'
+        else:
+            return 'upscale'
+    elif filename.startswith('vectorized_'):
+        return 'vectorize'
+    elif filename.startswith('processed_'):
+        return 'process_video'
+    elif filename.startswith('last_frame_'):
+        return 'extract_last_frame'
+    elif filename.startswith('style_vangogh_'):
+        return 'style_retro'  # vangogh 스타일은 레트로로 표시
+    elif filename.startswith('style_oil_painting_'):
+        return 'style_painting'  # oil_painting 스타일은 페인팅으로 표시
+    elif filename.startswith('style_'):
+        return 'style_transfer'  # 기타 스타일
+    else:
+        return 'unknown'
+
+@app.route('/api/image/<task_id>', methods=['GET'])
+def get_image(task_id):
+    """특정 파일의 이미지를 로딩"""
+    try:
+        if task_id not in session_storage:
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        session = session_storage[task_id]
+        filename = session.get('filename', '')
+        
+        if not filename:
+            return jsonify({'error': '파일명을 찾을 수 없습니다.'}), 404
+        
+        # 실제 파일 경로들 확인
+        file_path = None
+        
+        # 1. 업로드 폴더에서 원본 파일 확인
+        upload_path = UPLOAD_FOLDER / filename
+        if upload_path.exists():
+            file_path = upload_path
+        
+        # 2. 다운로드 폴더에서 처리된 파일 확인
+        download_path = DOWNLOAD_FOLDER / filename
+        if download_path.exists():
+            file_path = download_path
+        
+        if not file_path:
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        return send_file(file_path)
+        
+    except Exception as e:
+        print(f"❌ 이미지 로딩 실패: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/image/<task_id>/result/<result_id>', methods=['GET'])
+def get_result_image(task_id, result_id):
+    """특정 작업 결과 이미지를 로딩"""
+    try:
+        if task_id not in session_storage:
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        session = session_storage[task_id]
+        filename = None
+        
+        # 동적으로 processingResults를 생성하고 해당 result_id 찾기
+        # 1. 새로운 processing_history에서 찾기
+        print(f"🔍 DEBUG: 삭제 요청 - task_id: {task_id}, result_id: {result_id}")
+        print(f"🔍 DEBUG: 세션에 processing_history 있음: {'processing_history' in session}")
+        
+        if 'processing_history' in session:
+            print(f"🔍 DEBUG: processing_history 개수: {len(session['processing_history'])}")
+            for i, history_entry in enumerate(session['processing_history']):
+                print(f"🔍 DEBUG: 히스토리 {i}: ID={history_entry['id']}, 파일={history_entry['filename']}")
+                if history_entry['id'] == result_id:
+                    filename = history_entry['filename']
+                    print(f"✅ DEBUG: 매칭된 파일: {filename}")
+                    break
+        
+        # 2. 기존 호환성: 일반 작업 결과 확인
+        if not filename and session.get('status') == 'completed' and 'result_file' in session:
+            result_filename = session['result_file']
+            action_type = get_action_type_from_filename(result_filename)
+            expected_id = f"{task_id}_{action_type}"
+            
+            if expected_id == result_id:
+                filename = result_filename
+        
+        # 3. 기존 호환성: 스타일 작업 히스토리 확인
+        if not filename and 'style_results' in session:
+            for idx, style_result in enumerate(session['style_results']):
+                style = style_result['style']
+                action_type = 'style_transfer'
+                if style == 'vangogh':
+                    action_type = 'style_retro'
+                elif style == 'oil_painting':
+                    action_type = 'style_painting'
+                
+                expected_id = f"{task_id}_{action_type}_{idx}"
+                if expected_id == result_id:
+                    filename = style_result['filename']
+                    break
+        
+        if not filename:
+            return jsonify({'error': '작업 결과를 찾을 수 없습니다.'}), 404
+        
+        file_path = DOWNLOAD_FOLDER / filename
+        if not file_path.exists():
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        # download 쿼리 파라미터가 있으면 attachment로 보내기
+        download = request.args.get('download', 'false').lower() == 'true'
+        if download:
+            return send_file(file_path, as_attachment=True, download_name=filename)
+        else:
+            return send_file(file_path)
+        
+    except Exception as e:
+        print(f"❌ 작업 결과 이미지 로딩 실패: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/video-frame/<task_id>/<int:frame_index>', methods=['GET'])
+def get_video_frame(task_id, frame_index):
+    """특정 비디오 프레임을 로딩"""
+    try:
+        if task_id not in session_storage:
+            return jsonify({'error': '파일을 찾을 수 없습니다.'}), 404
+        
+        frame_filename = f"frame_{task_id}_{frame_index:06d}.png"
+        frame_path = DOWNLOAD_FOLDER / frame_filename
+        
+        if not frame_path.exists():
+            return jsonify({'error': '프레임을 찾을 수 없습니다.'}), 404
+        
+        return send_file(frame_path)
+        
+    except Exception as e:
+        print(f"❌ 비디오 프레임 로딩 실패: {e}")
+        return jsonify({'error': str(e)}), 500
+
 # 에러 핸들러
 @app.errorhandler(404)
 def not_found(error):
@@ -951,7 +1309,7 @@ def internal_error(error):
 
 if __name__ == '__main__':
     print("🚀 EdgeHD Backend API Server 시작...")
-    print("🔥 AI 이미지/비디오 처리 API 서비스")
+    print("🔥 AI 이미지/비디오 작업 API 서비스")
     print(f"🌐 서버 주소: http://{HOST}:{PORT}")
     print(f"📁 지원 형식: {', '.join(sorted(ALLOWED_EXTENSIONS))}")
     print(f"📏 최대 파일 크기: {MAX_FILE_SIZE // (1024*1024)}MB")

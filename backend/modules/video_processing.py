@@ -1,5 +1,5 @@
 """
-비디오 프레임별 처리 모듈
+비디오 프레임별 작업 모듈
 """
 
 import os
@@ -13,7 +13,7 @@ from werkzeug.utils import secure_filename
 
 
 class VideoProcessor:
-    """비디오 프레임별 처리 클래스"""
+    """비디오 프레임별 작업 클래스"""
     
     def __init__(self):
         self.temp_dirs = {}
@@ -36,20 +36,20 @@ class VideoProcessor:
                 print(f"⚠️ 임시 디렉토리 정리 실패: {e}")
     
     def extract_frames(self, video_path, temp_dir, progress_callback=None):
-        """비디오에서 프레임 추출 (강화된 디버깅 및 오류 처리)"""
+        """비디오에서 프레임 추출 (강화된 디버깅 및 오류 작업)"""
         try:
             if progress_callback:
                 progress_callback(10, "🎬 비디오 정보 분석 중...")
             
-            # 비디오 파일 존재 및 크기 확인
+            # 비디오 작업 존재 및 크기 확인
             if not os.path.exists(video_path):
-                raise ValueError(f"비디오 파일이 존재하지 않습니다: {video_path}")
+                raise ValueError(f"비디오 작업이 존재하지 않습니다: {video_path}")
             
             file_size = os.path.getsize(video_path)
-            print(f"📂 비디오 파일 확인: {video_path} (크기: {file_size:,} bytes)")
+            print(f"📂 비디오 작업 확인: {video_path} (크기: {file_size:,} bytes)")
             
             if file_size == 0:
-                raise ValueError("비디오 파일이 비어있습니다")
+                raise ValueError("비디오 작업이 비어있습니다")
             
             # OpenCV 버전 및 코덱 지원 확인
             print(f"🔧 OpenCV 버전: {cv2.__version__}")
@@ -72,7 +72,7 @@ class VideoProcessor:
                 cap = cv2.VideoCapture(abs_path)
                 
                 if not cap.isOpened():
-                    raise ValueError(f"비디오 파일을 열 수 없습니다. 지원되지 않는 코덱이거나 손상된 파일일 수 있습니다.\n파일: {video_path}")
+                    raise ValueError(f"비디오 작업을 열 수 없습니다. 지원되지 않는 코덱이거나 손상된 파일일 수 있습니다.\n파일: {video_path}")
             
             print("✅ VideoCapture 초기화 성공")
             
@@ -135,7 +135,7 @@ class VideoProcessor:
                     continue
                 
                 try:
-                    # BGR to RGB 변환
+                    # BGR to RGB 작업
                     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     frame_pil = Image.fromarray(frame_rgb)
                     
@@ -168,7 +168,7 @@ class VideoProcessor:
                         print(f"   📊 진행 상황: {frame_count}개 프레임 추출됨")
                 
                 except Exception as frame_error:
-                    print(f"⚠️ 프레임 {frame_count} 처리 중 오류: {frame_error}")
+                    print(f"⚠️ 프레임 {frame_count} 작업 중 오류: {frame_error}")
                     continue
             
             # 실제 추출된 프레임 수로 정확한 FPS 계산 (cap.release() 전에 수행)
@@ -192,7 +192,7 @@ class VideoProcessor:
             
             # 프레임이 하나도 추출되지 않은 경우
             if frame_count == 0:
-                raise ValueError("프레임을 하나도 추출할 수 없습니다. 비디오 파일이 손상되었거나 지원되지 않는 형식일 수 있습니다.")
+                raise ValueError("프레임을 하나도 추출할 수 없습니다. 비디오 작업이 손상되었거나 지원되지 않는 형식일 수 있습니다.")
             
             return {
                 'frame_files': frame_files,
@@ -214,7 +214,7 @@ class VideoProcessor:
             raise
     
     def process_frames(self, frame_files, remove_bg, upscale, scale_factor, background_color=None, progress_callback=None, ai_model=None, upscale_model=None):
-        """각 프레임에 AI 처리 적용 (배경 색상 선택 지원)"""
+        """각 프레임에 AI 작업 적용 (배경 색상 선택 지원)"""
         try:
             total_frames = len(frame_files)
             processed_files = []
@@ -222,7 +222,7 @@ class VideoProcessor:
             # 배경 색상 설정 (기본값: 흰색)
             if background_color and background_color.startswith('#') and len(background_color) == 7:
                 try:
-                    # 16진수 색상 코드를 RGB로 변환
+                    # 16진수 색상 코드를 RGB로 작업
                     bg_color = tuple(int(background_color[i:i+2], 16) for i in (1, 3, 5))
                     print(f"🎨 선택된 배경 색상: {background_color} (RGB: {bg_color})")
                 except ValueError:
@@ -232,7 +232,7 @@ class VideoProcessor:
                 bg_color = (255, 255, 255)  # 기본 흰색
             
             if progress_callback:
-                progress_callback(20, f"🤖 AI 처리 시작... (총 {total_frames}개 프레임)")
+                progress_callback(20, f"🤖 AI 작업 시작... (총 {total_frames}개 프레임)")
             
             for i, frame_path in enumerate(frame_files):
                 # 프레임 로드
@@ -242,7 +242,7 @@ class VideoProcessor:
                 # 배경 제거 적용
                 if remove_bg and ai_model:
                     processed_image = ai_model.remove_background(processed_image)
-                    # RGBA를 RGB로 변환 (비디오는 투명도 지원 안함)
+                    # RGBA를 RGB로 작업 (비디오는 투명도 지원 안함)
                     if processed_image.mode == 'RGBA':
                         # 선택된 색상으로 배경 합성
                         color_bg = Image.new('RGB', processed_image.size, bg_color)
@@ -253,21 +253,21 @@ class VideoProcessor:
                 if upscale and upscale_model:
                     processed_image = upscale_model.upscale_image(processed_image, scale_factor)
                 
-                # 처리된 프레임 저장
+                # 작업된 프레임 저장
                 processed_path = frame_path.replace('frames', 'processed').replace('.png', '_processed.png')
                 os.makedirs(os.path.dirname(processed_path), exist_ok=True)
                 processed_image.save(processed_path)
                 processed_files.append(processed_path)
                 
-                # 진행률 업데이트 (프레임 처리는 20%~80%)
+                # 진행률 업데이트 (프레임 작업는 20%~80%)
                 if progress_callback:
                     progress = 20 + (i + 1) / total_frames * 60
-                    progress_callback(int(progress), f"🤖 AI가 프레임을 처리하고 있습니다... ({i+1}/{total_frames})")
+                    progress_callback(int(progress), f"🤖 AI가 프레임을 작업하고 있습니다... ({i+1}/{total_frames})")
             
             return processed_files
             
         except Exception as e:
-            print(f"❌ 프레임 처리 실패: {e}")
+            print(f"❌ 프레임 작업 실패: {e}")
             raise
     
     def extract_last_frame(self, video_path, progress_callback=None):
@@ -276,15 +276,15 @@ class VideoProcessor:
             if progress_callback:
                 progress_callback(10, "🎬 비디오 마지막 프레임 추출 중...")
             
-            # 비디오 파일 존재 확인
+            # 비디오 작업 존재 확인
             if not os.path.exists(video_path):
-                raise ValueError(f"비디오 파일이 존재하지 않습니다: {video_path}")
+                raise ValueError(f"비디오 작업이 존재하지 않습니다: {video_path}")
             
             file_size = os.path.getsize(video_path)
-            print(f"📂 비디오 파일 확인: {video_path} (크기: {file_size:,} bytes)")
+            print(f"📂 비디오 작업 확인: {video_path} (크기: {file_size:,} bytes)")
             
             if file_size == 0:
-                raise ValueError("비디오 파일이 비어있습니다")
+                raise ValueError("비디오 작업이 비어있습니다")
             
             if progress_callback:
                 progress_callback(30, "📹 비디오 정보 분석 중...")
@@ -293,7 +293,7 @@ class VideoProcessor:
             cap = cv2.VideoCapture(video_path)
             
             if not cap.isOpened():
-                raise ValueError(f"비디오 파일을 열 수 없습니다: {video_path}")
+                raise ValueError(f"비디오 작업을 열 수 없습니다: {video_path}")
             
             if progress_callback:
                 progress_callback(50, "🎞️ 마지막 프레임 검색 중...")
@@ -336,9 +336,9 @@ class VideoProcessor:
             cap.release()
             
             if progress_callback:
-                progress_callback(85, "🎨 이미지 변환 중...")
+                progress_callback(85, "🎨 이미지 작업 중...")
             
-            # BGR to RGB 변환
+            # BGR to RGB 작업
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             frame_pil = Image.fromarray(frame_rgb)
             
@@ -363,7 +363,7 @@ class VideoProcessor:
             raise
 
     def reassemble_video(self, processed_files, output_path, fps, width, height, progress_callback=None):
-        """처리된 프레임들을 비디오로 재조립 (H.264 코덱 사용)"""
+        """작업된 프레임들을 비디오로 재조립 (H.264 코덱 사용)"""
         try:
             if progress_callback:
                 progress_callback(80, "🎬 H.264 코덱으로 비디오 재조립 중...")
@@ -407,7 +407,7 @@ class VideoProcessor:
                 frame_pil = Image.open(frame_path).convert('RGB')
                 frame_pil = frame_pil.resize((width, height), Image.Resampling.LANCZOS)
                 
-                # PIL to OpenCV 변환
+                # PIL to OpenCV 작업
                 frame_array = np.array(frame_pil)
                 frame_bgr = cv2.cvtColor(frame_array, cv2.COLOR_RGB2BGR)
                 

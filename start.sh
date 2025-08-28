@@ -67,14 +67,14 @@ fi
 
 # Check port availability
 if command -v lsof &> /dev/null; then
-    if lsof -i :8080 2>/dev/null | grep -q LISTEN; then
-        echo "❌ Port 8080 is already in use."
+    if lsof -i :9090 2>/dev/null | grep -q LISTEN; then
+        echo "❌ Port 9090 is already in use."
         echo "   Another service may be running on this port."
         exit 1
     fi
     
-    if lsof -i :3000 2>/dev/null | grep -q LISTEN; then
-        echo "❌ Port 3000 is already in use."
+    if lsof -i :8080 2>/dev/null | grep -q LISTEN; then
+        echo "❌ Port 8080 is already in use."
         echo "   Another service may be running on this port."
         exit 1
     fi
@@ -155,11 +155,11 @@ sleep 5
 # Verify backend is running and check port
 for i in {1..12}; do
     if is_process_running "$BACKEND_PID"; then
-        if command -v lsof &> /dev/null && lsof -i :8080 2>/dev/null | grep -q LISTEN; then
+        if command -v lsof &> /dev/null && lsof -i :9090 2>/dev/null | grep -q LISTEN; then
             echo "✅ Backend started successfully (PID: $BACKEND_PID)"
             break
         elif [ $i -eq 12 ]; then
-            echo "❌ Backend started but port 8080 is not active."
+            echo "❌ Backend started but port 9090 is not active."
             echo "📄 Backend error log:"
             cat "$BACKEND_ERROR_LOG"
             rm -f "$BACKEND_PID_FILE"
@@ -204,11 +204,11 @@ sleep 8
 # Verify frontend is running and check port
 for i in {1..10}; do
     if is_process_running "$FRONTEND_PID"; then
-        if command -v lsof &> /dev/null && lsof -i :3000 2>/dev/null | grep -q LISTEN; then
+        if command -v lsof &> /dev/null && lsof -i :8080 2>/dev/null | grep -q LISTEN; then
             echo "✅ Frontend started successfully (PID: $FRONTEND_PID)"
             break
         elif [ $i -eq 10 ]; then
-            echo "❌ Frontend started but port 3000 is not active."
+            echo "❌ Frontend started but port 8080 is not active."
             echo "📄 Frontend error log:"
             cat "$FRONTEND_ERROR_LOG"
             rm -f "$FRONTEND_PID_FILE"
@@ -253,12 +253,12 @@ echo "   • Backend Log: $BACKEND_LOG"
 echo "   • Frontend Log: $FRONTEND_LOG"
 echo
 echo "🌐 ACCESS URLs:"
-echo "   • Frontend UI: http://localhost:3000"
-echo "   • Backend API: http://localhost:8080"
+echo "   • Frontend UI: http://localhost:8080"
+echo "   • Backend API: http://localhost:9090"
 if command -v hostname &> /dev/null; then
     LOCAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     if [ -n "$LOCAL_IP" ]; then
-        echo "   • Network: http://$LOCAL_IP:3000"
+        echo "   • Network: http://$LOCAL_IP:8080"
     fi
 fi
 echo

@@ -465,7 +465,7 @@
         background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
       }
 
-      /* 처리 메시지 (패널에 직접 표시) */
+      /* 작업 메시지 (패널에 직접 표시) */
       .processing-message {
         background: none;
         color: #666;
@@ -536,7 +536,7 @@
         display: flex;
       }
 
-      /* 비디오 처리 상태 표시 영역 */
+      /* 비디오 작업 상태 표시 영역 */
       .video-status-area {
         display: none;
         flex-direction: column;
@@ -982,9 +982,9 @@
       <h1>🫥 🖼️ ✂️ 🔥 👨🏻‍💻 AICLUDE EdgeHD</h1>
       <div class="mode-tabs">
         <div class="mode-tab active" onclick="switchMode('image')">
-          🖼️ 이미지 처리
+          🖼️ 이미지 작업
         </div>
-        <div class="mode-tab" onclick="switchMode('video')">🎬 비디오 처리</div>
+        <div class="mode-tab" onclick="switchMode('video')">🎬 비디오 작업</div>
       </div>
     </div>
 
@@ -1076,9 +1076,9 @@
               </div>
             </div>
 
-            <!-- 처리될 비디오 정보 -->
+            <!-- 작업될 비디오 정보 -->
             <div class="video-info-card">
-              <div class="video-info-title">🎬 처리될 비디오</div>
+              <div class="video-info-title">🎬 작업될 비디오</div>
               <div class="video-info-item">
                 <span class="video-info-label">변경 해상도:</span>
                 <span class="video-info-value" id="processedResolution"
@@ -1160,16 +1160,16 @@
         <div class="empty-state" id="emptyState">
           <div class="empty-icon" id="emptyIcon">🖼️</div>
           <div class="empty-text" id="emptyText">
-            이미지를 처리하면<br />결과가 여기에 표시됩니다
+            이미지를 작업하면<br />결과가 여기에 표시됩니다
           </div>
         </div>
 
         <!-- 결과 표시 영역 -->
         <div class="image-display-area" id="rightImageArea">
           <div class="image-container">
-            <img id="rightImage" class="image-display" alt="처리 결과" />
+            <img id="rightImage" class="image-display" alt="작업 결과" />
           </div>
-          <div class="image-label" id="rightImageLabel">처리 결과</div>
+          <div class="image-label" id="rightImageLabel">작업 결과</div>
           <div class="action-buttons" id="rightActionButtons">
             <button class="btn download" id="downloadBtn">🔽 다운로드</button>
             <button
@@ -1193,9 +1193,9 @@
           </div>
         </div>
 
-        <!-- 비디오 처리 상태 표시 영역 -->
+        <!-- 비디오 작업 상태 표시 영역 -->
         <div class="video-status-area" id="videoStatusArea">
-          <!-- 처리 메시지 (패널에 직접 표시) -->
+          <!-- 작업 메시지 (패널에 직접 표시) -->
           <div
             class="processing-message"
             id="processingMessage"
@@ -1215,7 +1215,7 @@
             id="videoResultSection"
             style="display: none"
           >
-            <div class="result-title">🎉 비디오 처리 완료!</div>
+            <div class="result-title">🎉 비디오 작업 완료!</div>
             <div class="action-buttons">
               <button class="btn download" id="videoDownloadBtn">
                 🔽 비디오 다운로드
@@ -1313,7 +1313,7 @@
             취소
           </button>
           <button class="popup-btn" onclick="confirmBackgroundColor()">
-            확인하고 처리 시작
+            확인하고 작업 시작
           </button>
         </div>
       </div>
@@ -1451,7 +1451,7 @@
 
     <script>
       // 백엔드로부터 전달받은 데이터
-      // Jinja2 템플릿 구문을 안전하게 처리
+      // Jinja2 템플릿 구문을 안전하게 작업
       let workId = "";
       let workData = null;
 
@@ -1555,9 +1555,9 @@
       let messageInterval = null;
       let processingStartTime = null;
       let selectedBackgroundColor = "#FFFFFF"; // 기본 배경색
-      let pendingProcessingMode = null; // 팝업에서 선택된 처리 모드
+      let pendingProcessingMode = null; // 팝업에서 선택된 작업 모드
 
-      // 실제 프레임 처리 시작 시간 (window 객체에 저장)
+      // 실제 프레임 작업 시작 시간 (window 객체에 저장)
       window.actualProcessingStartTime = null;
 
       // 재미있는 메시지들
@@ -1572,14 +1572,14 @@
         },
         {
           msg: "🔍 이미지를 더 선명하게 만들고 있어요!",
-          tip: "업스케일링은 픽셀 하나하나를 정교하게 처리해요 🎯",
+          tip: "업스케일링은 픽셀 하나하나를 정교하게 작업해요 🎯",
         },
         {
           msg: "⚡ GPU가 열심히 계산하고 있어요!",
           tip: "AI 모델이 복잡한 연산을 수행 중이에요 🧠",
         },
         {
-          msg: "🎬 영화 같은 품질로 변환 중이에요!",
+          msg: "🎬 영화 같은 품질로 작업 중이에요!",
           tip: "프로페셔널한 결과물을 만들어 드릴게요 🎪",
         },
         {
@@ -1588,7 +1588,7 @@
         },
         {
           msg: "🌟 각 프레임에 특별한 마법을 걸고 있어요!",
-          tip: "AI가 디테일까지 놓치지 않고 처리해요 🔬",
+          tip: "AI가 디테일까지 놓치지 않고 작업해요 🔬",
         },
         {
           msg: "🎭 배경과 객체를 정밀하게 구분하고 있어요!",
@@ -1596,23 +1596,23 @@
         },
         {
           msg: "💎 다이아몬드처럼 투명하고 깔끔하게!",
-          tip: "완벽한 투명도 처리를 위해 노력하고 있어요 💍",
+          tip: "완벽한 투명도 작업를 위해 노력하고 있어요 💍",
         },
         {
           msg: "🎪 서커스단의 곡예사처럼 정교하게!",
-          tip: "균형잡힌 처리로 자연스러운 결과를 만들어요 🤹",
+          tip: "균형잡힌 작업로 자연스러운 결과를 만들어요 🤹",
         },
       ];
 
       const processingTips = [
         "💡 팁: 해상도가 높을수록 더 오래 걸리지만 품질도 좋아져요!",
-        "⚡ 팁: GPU 사용 시 CPU 대비 5-10배 빠른 처리가 가능해요!",
+        "⚡ 팁: GPU 사용 시 CPU 대비 5-10배 빠른 작업가 가능해요!",
         "🎯 팁: 배경이 복잡할수록 AI가 더 열심히 분석해요!",
-        "🌈 팁: 다양한 색상이 있는 영상일수록 처리 시간이 늘어날 수 있어요!",
-        "📱 팁: 모바일에서 촬영한 영상도 완벽하게 처리 가능해요!",
+        "🌈 팁: 다양한 색상이 있는 영상일수록 작업 시간이 늘어날 수 있어요!",
+        "📱 팁: 모바일에서 촬영한 영상도 완벽하게 작업 가능해요!",
         "🎨 팁: 애니메이션이나 그래픽 영상도 지원해요!",
         "⭐ 팁: 인물 영상에서 특히 뛰어난 성능을 보여줍니다!",
-        "🔥 팁: 실시간이 아닌 고품질 처리를 위해 시간을 투자하고 있어요!",
+        "🔥 팁: 실시간이 아닌 고품질 작업를 위해 시간을 투자하고 있어요!",
       ];
 
       // UUID 생성 함수
@@ -1635,11 +1635,11 @@
         if (currentMode === "video") {
           emptyIcon.textContent = "🎬";
           emptyText.innerHTML =
-            "비디오를 처리하면<br />결과가 여기에 표시됩니다";
+            "비디오를 작업하면<br />결과가 여기에 표시됩니다";
         } else {
           emptyIcon.textContent = "🖼️";
           emptyText.innerHTML =
-            "이미지를 처리하면<br />결과가 여기에 표시됩니다";
+            "이미지를 작업하면<br />결과가 여기에 표시됩니다";
         }
       }
 
@@ -1709,7 +1709,7 @@
         });
       });
 
-      // 벡터화 처리 실행
+      // 벡터화 작업 실행
       function processVectorize() {
         console.log("processVectorize 함수 시작됨");
 
@@ -1811,7 +1811,7 @@
           .then((data) => {
             console.log("서버 응답 데이터:", data);
             if (data.error) {
-              // 오류 처리
+              // 오류 작업
               console.error("벡터화 오류:", data.error);
               showMessage(data.error, "error");
               if (data.file_path) {
@@ -1839,7 +1839,7 @@
                 window.history.pushState({}, "", `/work/${data.work_id}`);
               }
 
-              // 결과 표시 (다른 처리와 동일한 방식)
+              // 결과 표시 (다른 작업와 동일한 방식)
               rightImage.src = data.download_url;
               rightImageLabel.textContent = `📐 벡터화 완료 (${
                 data.n_colors
@@ -1889,7 +1889,7 @@
         currentVideoFile = null;
         currentDownloadUrl = null;
 
-        // 비디오 처리 관련 정리
+        // 비디오 작업 관련 정리
         stopFileCountPolling();
         if (messageInterval) {
           clearInterval(messageInterval);
@@ -1901,7 +1901,7 @@
           videoResultSection.style.display = "none";
         }
 
-        // 처리 메시지 숨기기
+        // 작업 메시지 숨기기
         if (processingMessage) {
           processingMessage.style.display = "none";
         }
@@ -1929,14 +1929,14 @@
         pendingProcessingMode = null;
       }
 
-      // 배경 색상 확인 후 처리 시작
+      // 배경 색상 확인 후 작업 시작
       function confirmBackgroundColor() {
         console.log(
           "✅ 배경 색상 확인, pendingProcessingMode:",
           pendingProcessingMode
         );
         if (pendingProcessingMode) {
-          // 처리 모드를 임시 변수에 저장
+          // 작업 모드를 임시 변수에 저장
           const modeToProcess = pendingProcessingMode;
           hideBackgroundColorPopup(); // 이제 pendingProcessingMode가 null이 됨
           startVideoProcessing(modeToProcess); // 하지만 임시 변수 사용
@@ -1980,7 +1980,7 @@
         }
       }
 
-      // 처리 메시지 업데이트 (패널에 직접 표시)
+      // 작업 메시지 업데이트 (패널에 직접 표시)
       function updateProcessingMessage() {
         if (!processingMainMessage || !processingTipMessage) return;
 
@@ -2032,7 +2032,7 @@
         console.log("비디오 정보 업데이트 완료:", videoProcessingData);
       }
 
-      // 처리될 비디오 정보 업데이트
+      // 작업될 비디오 정보 업데이트
       function updateProcessingInfo(removeBg, upscale, scaleRatio) {
         if (!videoProcessingData) return;
 
@@ -2072,14 +2072,14 @@
 
       // 현재 프레임 업데이트 (실제 파일 수 기반)
       function updateCurrentFrame(processedCount, totalFrames) {
-        // 현재 처리된 프레임 수와 비율 표시
+        // 현재 작업된 프레임 수와 비율 표시
         const progressPercent =
           totalFrames > 0 ? (processedCount / totalFrames) * 100 : 0;
 
-        // 첫 번째 프레임 처리 시 실제 처리 시작 시간 기록
+        // 첫 번째 프레임 작업 시 실제 작업 시작 시간 기록
         if (processedCount === 1 && !window.actualProcessingStartTime) {
           window.actualProcessingStartTime = Date.now();
-          console.log("실제 프레임 처리 시작 시간 기록");
+          console.log("실제 프레임 작업 시작 시간 기록");
         }
 
         if (window.actualProcessingStartTime && processedCount > 0) {
@@ -2101,7 +2101,7 @@
         }
       }
 
-      // 비디오 처리 상태 표시
+      // 비디오 작업 상태 표시
       function showVideoProcessingStatus() {
         console.log("🎬 showVideoProcessingStatus() 호출됨");
 
@@ -2117,15 +2117,15 @@
         );
         console.log("📋 processingMessage 요소:", processingMessage);
 
-        // 처리 메시지 주기적 업데이트 시작
+        // 작업 메시지 주기적 업데이트 시작
         updateProcessingMessage();
         messageInterval = setInterval(updateProcessingMessage, 8000); // 8초마다 메시지 변경
 
-        // 처리 시작 시간 초기화
+        // 작업 시작 시간 초기화
         processingStartTime = Date.now();
-        window.actualProcessingStartTime = null; // 실제 프레임 처리 시작 시간 초기화
+        window.actualProcessingStartTime = null; // 실제 프레임 작업 시작 시간 초기화
 
-        // 처리 메시지 표시
+        // 작업 메시지 표시
         if (processingMessage) {
           processingMessage.style.display = "block";
           console.log("💬 processingMessage 표시됨");
@@ -2138,10 +2138,10 @@
           videoResultSection.style.display = "none";
         }
 
-        console.log("✅ 비디오 처리 상태 표시 완료");
+        console.log("✅ 비디오 작업 상태 표시 완료");
       }
 
-      // 비디오 처리 완료 시 정리
+      // 비디오 작업 완료 시 정리
       function hideVideoProcessingStatus() {
         console.log("🔧 hideVideoProcessingStatus 시작");
 
@@ -2151,10 +2151,10 @@
           console.log("📴 메시지 인터벌 정리됨");
         }
 
-        // 처리 메시지 숨기기
+        // 작업 메시지 숨기기
         if (processingMessage) {
           processingMessage.style.display = "none";
-          console.log("📴 처리 메시지 숨김");
+          console.log("📴 작업 메시지 숨김");
         } else {
           console.error("❌ processingMessage 요소를 찾을 수 없음");
         }
@@ -2179,10 +2179,10 @@
           return;
         }
 
-        // 처리 시작 전에 우측 패널 표시
+        // 작업 시작 전에 우측 패널 표시
         showVideoProcessingStatus();
 
-        // 처리 메시지 업데이트
+        // 작업 메시지 업데이트
         if (processingMainMessage) {
           processingMainMessage.textContent =
             "📸 마지막 프레임을 추출하고 있습니다!";
@@ -2191,7 +2191,7 @@
           processingTipMessage.textContent = "잠시만 기다려주세요 ✨";
         }
 
-        // 처리 버튼들 비활성화
+        // 작업 버튼들 비활성화
         const actionButtons = leftVideoActionButtons.querySelectorAll(".btn");
         actionButtons.forEach((btn) => (btn.disabled = true));
 
@@ -2214,14 +2214,14 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            // 처리 버튼들 재활성화
+            // 작업 버튼들 재활성화
             actionButtons.forEach((btn) => (btn.disabled = false));
 
             if (data.success) {
               // 프로그래스 스트림 연결
               connectToProgressStream(data.session_id);
 
-              // 완료 처리 시뮬레이션 (프로그래스가 100%가 되면 완료)
+              // 완료 작업 시뮬레이션 (프로그래스가 100%가 되면 완료)
               setTimeout(() => {
                 handleLastFrameComplete(data);
               }, 2000);
@@ -2234,7 +2234,7 @@
             }
           })
           .catch((error) => {
-            // 처리 버튼들 재활성화
+            // 작업 버튼들 재활성화
             actionButtons.forEach((btn) => (btn.disabled = false));
             console.error("Error:", error);
             showMessage("네트워크 오류가 발생했습니다.", "error");
@@ -2242,11 +2242,11 @@
           });
       }
 
-      // 마지막 프레임 추출 완료 처리
+      // 마지막 프레임 추출 완료 작업
       function handleLastFrameComplete(data) {
         console.log("🎉 마지막 프레임 추출 완료:", data);
 
-        // 처리 완료 처리
+        // 작업 완료 작업
         hideVideoProcessingStatus();
 
         // 우측 패널에 결과 이미지 표시
@@ -2276,12 +2276,12 @@
         );
       }
 
-      // 새로운 비디오 처리 시작 함수
+      // 새로운 비디오 작업 시작 함수
       function startVideoProcessing(mode) {
         console.log("🎬 startVideoProcessing 호출됨, mode:", mode);
 
         if (!currentVideoFile) {
-          showMessage("비디오 파일을 먼저 선택해주세요.", "error");
+          showMessage("비디오 작업을 먼저 선택해주세요.", "error");
           return;
         }
 
@@ -2289,8 +2289,8 @@
         let upscale = false;
         let scaleRatio = 2;
 
-        // 모드에 따른 처리 옵션 설정
-        console.log("🔧 처리 모드 분석:", mode, typeof mode);
+        // 모드에 따른 작업 옵션 설정
+        console.log("🔧 작업 모드 분석:", mode, typeof mode);
         switch (mode) {
           case "remove_bg":
             removeBg = true;
@@ -2315,19 +2315,19 @@
             break;
           default:
             console.error(
-              "❌ 알 수 없는 처리 모드:",
+              "❌ 알 수 없는 작업 모드:",
               mode,
               "타입:",
               typeof mode
             );
-            showMessage(`잘못된 처리 모드입니다: ${mode}`, "error");
+            showMessage(`잘못된 작업 모드입니다: ${mode}`, "error");
             return;
         }
 
-        // 처리 시작 전에 처리될 비디오 정보 업데이트
+        // 작업 시작 전에 작업될 비디오 정보 업데이트
         updateProcessingInfo(removeBg, upscale, scaleRatio);
 
-        // 처리 옵션을 전역 변수에 저장 (나중에 사용)
+        // 작업 옵션을 전역 변수에 저장 (나중에 사용)
         window.currentProcessingOptions = {
           removeBg: removeBg,
           upscale: upscale,
@@ -2337,9 +2337,9 @@
         processVideoWithOptions(removeBg, upscale, scaleRatio);
       }
 
-      // 비디오 처리 함수 (옵션 포함)
+      // 비디오 작업 함수 (옵션 포함)
       function processVideoWithOptions(removeBg, upscale, scaleRatio) {
-        console.log("🎬 비디오 처리 시작 - 옵션:", {
+        console.log("🎬 비디오 작업 시작 - 옵션:", {
           removeBg,
           upscale,
           scaleRatio,
@@ -2350,7 +2350,7 @@
 
         if (!currentVideoFile) {
           console.error("❌ currentVideoFile이 없습니다!");
-          showMessage("비디오 파일이 선택되지 않았습니다.", "error");
+          showMessage("비디오 작업이 선택되지 않았습니다.", "error");
           return;
         }
 
@@ -2372,10 +2372,10 @@
           workId: workId,
         });
 
-        // 비디오 처리 상태 표시 시작
+        // 비디오 작업 상태 표시 시작
         showVideoProcessingStatus();
 
-        // 처리 버튼들 비활성화
+        // 작업 버튼들 비활성화
         const actionButtons = leftVideoActionButtons.querySelectorAll(".btn");
         actionButtons.forEach((btn) => (btn.disabled = true));
 
@@ -2385,14 +2385,14 @@
         })
           .then((response) => response.json())
           .then((data) => {
-            // 처리 버튼들 재활성화
+            // 작업 버튼들 재활성화
             actionButtons.forEach((btn) => (btn.disabled = false));
 
             if (data.success) {
               // 서버에서 받은 정확한 비디오 정보 표시
               displayVideoInfo(data);
 
-              // 처리 옵션에 따른 정보 다시 업데이트 (정확한 데이터 기반)
+              // 작업 옵션에 따른 정보 다시 업데이트 (정확한 데이터 기반)
               if (window.currentProcessingOptions) {
                 updateProcessingInfo(
                   window.currentProcessingOptions.removeBg,
@@ -2404,11 +2404,11 @@
               // 프로그레스 스트림 연결
               connectToVideoProgressStream(data.session_id, data);
 
-              // 파일 카운트 폴링 시작 (실제 프레임 처리 추적)
+              // 파일 카운트 폴링 시작 (실제 프레임 작업 추적)
               startFileCountPolling(data.session_id);
             } else {
               showMessage(
-                data.error || "비디오 처리 중 오류가 발생했습니다.",
+                data.error || "비디오 작업 중 오류가 발생했습니다.",
                 "error"
               );
               stopFileCountPolling();
@@ -2419,7 +2419,7 @@
             }
           })
           .catch((error) => {
-            // 처리 버튼들 재활성화
+            // 작업 버튼들 재활성화
             actionButtons.forEach((btn) => (btn.disabled = false));
             console.error("Error:", error);
             showMessage("네트워크 오류가 발생했습니다.", "error");
@@ -2458,7 +2458,7 @@
         }
       });
 
-      // 파일 업로드 처리
+      // 파일 업로드 작업
       function handleFileUpload(file) {
         // 파일 유효성 검사
         if (!file.type.startsWith("image/")) {
@@ -2516,7 +2516,7 @@
               if (data.message) {
                 console.log(`✅ 파일 업로드 완료: ${workId}`);
                 showMessage(
-                  "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
+                  "이미지가 업로드되었습니다! 원하는 작업를 선택하세요.",
                   "success"
                 );
               } else {
@@ -2530,7 +2530,7 @@
             .catch((error) => {
               console.error("❌ 업로드 상태 저장 네트워크 오류:", error);
               showMessage(
-                "이미지가 업로드되었습니다! 원하는 처리를 선택하세요.",
+                "이미지가 업로드되었습니다! 원하는 작업를 선택하세요.",
                 "success"
               );
             });
@@ -2565,11 +2565,11 @@
         }
       });
 
-      // 비디오 업로드 처리
+      // 비디오 업로드 작업
       function handleVideoUpload(file) {
         // 파일 유효성 검사
         if (!file.type.startsWith("video/")) {
-          showMessage("비디오 파일만 업로드 가능합니다.", "error");
+          showMessage("비디오 작업만 업로드 가능합니다.", "error");
           return;
         }
 
@@ -2590,7 +2590,7 @@
 
         currentVideoFile = file;
 
-        // 비디오 파일을 URL로 변환하여 표시
+        // 비디오 작업을 URL로 작업하여 표시
         const videoURL = URL.createObjectURL(file);
         leftVideo.src = videoURL;
 
@@ -2604,7 +2604,7 @@
         videoStatusArea.classList.add("visible");
         emptyState.classList.add("hide");
 
-        // 처리 메시지 즉시 표시 (대기 상태)
+        // 작업 메시지 즉시 표시 (대기 상태)
         if (processingMessage) {
           processingMessage.style.display = "block";
         }
@@ -2612,7 +2612,7 @@
           processingMainMessage.textContent = "🎬 비디오가 업로드되었습니다!";
         }
         if (processingTipMessage) {
-          processingTipMessage.textContent = "처리할 작업을 선택해주세요 ✨";
+          processingTipMessage.textContent = "작업할 작업을 선택해주세요 ✨";
         }
 
         // 비디오 업로드 상태를 즉시 서버에 저장
@@ -2679,7 +2679,7 @@
             videoTotalFramesEl.textContent = `분석 중...`;
           }
 
-          // 초기 처리 정보 설정 (아무것도 적용 안함)
+          // 초기 작업 정보 설정 (아무것도 적용 안함)
           const processedResolutionEl = document.getElementById(
             "processedResolution"
           );
@@ -2704,7 +2704,7 @@
 
         const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
         showMessage(
-          `비디오가 업로드되었습니다! (${fileSizeMB}MB) 원하는 처리 옵션을 선택하세요.`,
+          `비디오가 업로드되었습니다! (${fileSizeMB}MB) 원하는 작업 옵션을 선택하세요.`,
           "success"
         );
       }
@@ -2735,7 +2735,7 @@
         img.src = src;
       }
 
-      // 이미지 처리 (좌측에서)
+      // 이미지 작업 (좌측에서)
       function processImage(type, scale = 4) {
         if (!currentImageFile) {
           showMessage("먼저 이미지를 업로드해주세요.", "error");
@@ -2752,7 +2752,7 @@
           formData.append("file", currentImageFile);
           console.log("새로 업로드된 파일 사용:", currentImageFile.name);
         } else {
-          console.log("복원된 세션에서 처리 (파일 없이 work_id만 전송)");
+          console.log("복원된 세션에서 작업 (파일 없이 work_id만 전송)");
         }
 
         // 프론트엔드에서 생성한 work_id 전달
@@ -2788,7 +2788,7 @@
                 progressStream = connectToProgressStream(data.session_id);
               }
 
-              // 처리 완료 후 결과 표시
+              // 작업 완료 후 결과 표시
               setTimeout(() => {
                 rightImage.src = data.download_url;
                 rightImageLabel.textContent = `${processingName} 완료 ✨`;
@@ -2822,15 +2822,15 @@
             if (progressStream) {
               progressStream.close();
             }
-            showMessage("처리 중 오류가 발생했습니다.", "error");
+            showMessage("작업 중 오류가 발생했습니다.", "error");
             console.error("Error:", error);
           });
       }
 
-      // 연속 처리 (우측 결과에서)
+      // 연속 작업 (우측 결과에서)
       function continueProcessing(type, scale = 4) {
         if (!currentDownloadUrl) {
-          showMessage("처리할 이미지가 없습니다.", "error");
+          showMessage("작업할 이미지가 없습니다.", "error");
           return;
         }
 
@@ -2847,7 +2847,7 @@
             leftImage.src = currentDownloadUrl;
             leftImageLabel.textContent = "현재 이미지";
 
-            // 투명도 배경 처리
+            // 투명도 배경 작업
             if (
               rightImage.parentElement.classList.contains("transparency-bg")
             ) {
@@ -2856,7 +2856,7 @@
               leftImage.parentElement.classList.remove("transparency-bg");
             }
 
-            // 새로운 처리 시작
+            // 새로운 작업 시작
             processImage(type, scale);
           })
           .catch((error) => {
@@ -2932,21 +2932,21 @@
               // 실제 파일 수 기반으로 프레임 업데이트
               updateCurrentFrame(data.processed_count, data.total_frames);
 
-              // 완료 체크 - 서버에서 completed=true이거나 처리된 프레임 수가 총 프레임 수에 도달하면 완료
+              // 완료 체크 - 서버에서 completed=true이거나 작업된 프레임 수가 총 프레임 수에 도달하면 완료
               if (
                 data.completed ||
                 (data.processed_count >= data.total_frames &&
                   data.total_frames > 0)
               ) {
                 console.log(
-                  `🎬 비디오 처리 완료! completed=${data.completed}, frames=${data.processed_count}/${data.total_frames}`
+                  `🎬 비디오 작업 완료! completed=${data.completed}, frames=${data.processed_count}/${data.total_frames}`
                 );
                 console.log("📊 완료 데이터:", data);
 
                 clearInterval(fileCountPollingInterval);
                 fileCountPollingInterval = null;
 
-                // 처리 완료 처리
+                // 작업 완료 작업
                 handleVideoProcessingComplete(data);
               }
             } else {
@@ -2964,7 +2964,7 @@
                   clearInterval(fileCountPollingInterval);
                   fileCountPollingInterval = null;
                   showMessage(
-                    "비디오 처리가 완료되었을 수 있습니다. 페이지를 새로고침해주세요.",
+                    "비디오 작업가 완료되었을 수 있습니다. 페이지를 새로고침해주세요.",
                     "error"
                   );
                 }
@@ -2986,9 +2986,9 @@
         }
       }
 
-      // 비디오 처리 완료 처리
+      // 비디오 작업 완료 작업
       function handleVideoProcessingComplete(data) {
-        console.log("🎉 비디오 처리 완료 처리 시작:", data);
+        console.log("🎉 비디오 작업 완료 작업 시작:", data);
 
         // 시간 변수 정리
         processingStartTime = null;
@@ -2997,7 +2997,7 @@
         // 파일 카운트 폴링 중지
         stopFileCountPolling();
 
-        // UI 완료 처리
+        // UI 완료 작업
         hideVideoProcessingStatus();
 
         // 다운로드 URL 설정 (work_id 기반)
@@ -3034,7 +3034,7 @@
         }
 
         // 완료 메시지
-        showMessage("🎉 비디오 처리 완료!", "success");
+        showMessage("🎉 비디오 작업 완료!", "success");
       }
 
       // 비디오 프로그레스 스트림 연결
@@ -3050,9 +3050,9 @@
             );
 
             if (data.progress >= 100) {
-              // SSE 완료 신호 - 실제 완료는 파일 카운트 폴링에서 처리
+              // SSE 완료 신호 - 실제 완료는 파일 카운트 폴링에서 작업
               console.log(
-                "📡 SSE 스트림에서 완료 신호 받음 - 파일 카운트 폴링이 실제 완료를 처리함"
+                "📡 SSE 스트림에서 완료 신호 받음 - 파일 카운트 폴링이 실제 완료를 작업함"
               );
               eventSource.close();
             }
@@ -3159,7 +3159,7 @@
         fileInput.value = "";
         videoFileInput.value = "";
 
-        // 비디오 처리 관련 정리
+        // 비디오 작업 관련 정리
         if (messageInterval) {
           clearInterval(messageInterval);
           messageInterval = null;
@@ -3239,10 +3239,10 @@
               leftImage.src = originalImageUrl;
               leftImageLabel.textContent = `📁 ${workData.original_filename}`;
 
-              // 우측 패널은 숨김 (아직 처리되지 않음)
+              // 우측 패널은 숨김 (아직 작업되지 않음)
               rightImageArea.classList.remove("visible");
 
-              // currentImageFile 복원 (AI 처리를 위해)
+              // currentImageFile 복원 (AI 작업를 위해)
               fetch(originalImageUrl)
                 .then((response) => response.blob())
                 .then((blob) => {
@@ -3259,10 +3259,10 @@
                   );
                 })
                 .catch((error) => {
-                  console.error("❌ 원본 이미지 파일 복원 실패:", error);
+                  console.error("❌ 원본 이미지 작업 복원 실패:", error);
                 });
             }
-            // 완료된 상태면 처리된 이미지 표시
+            // 완료된 상태면 작업된 이미지 표시
             else if (workData.completed) {
               console.log("✅ 완료된 작업 복원:", workData.filename);
 
@@ -3272,14 +3272,14 @@
                 leftImage.src = originalImageUrl;
                 leftImageLabel.textContent = `📁 ${workData.original_filename}`;
               } else {
-                // 다른 처리(배경제거, 업스케일)는 기존 방식
+                // 다른 작업(배경제거, 업스케일)는 기존 방식
                 leftImage.src = workData.download_url;
                 leftImageLabel.textContent = ""; // 라벨 비우기
               }
               rightImageArea.classList.add("visible");
             }
 
-            // 우측 패널 - 처리 결과도 동일하게 표시 (사용자가 계속 작업할 수 있도록)
+            // 우측 패널 - 작업 결과도 동일하게 표시 (사용자가 계속 작업할 수 있도록)
             rightImage.src = workData.download_url;
             rightImageLabel.textContent =
               workData.type === "upscale"
@@ -3290,7 +3290,7 @@
                   )}KB) ✨`
                 : "배경 제거 완료 ✨";
 
-            // 현재 이미지 파일 상태 설정 (추가 처리를 위해)
+            // 현재 이미지 작업 상태 설정 (추가 작업를 위해)
             fetch(workData.download_url)
               .then((response) => response.blob())
               .then((blob) => {
@@ -3303,7 +3303,7 @@
                 );
               })
               .catch((error) => {
-                console.error("❌ 이미지 파일 복원 실패:", error);
+                console.error("❌ 이미지 작업 복원 실패:", error);
               });
 
             // 투명도 배경 설정 (배경 제거인 경우만)
@@ -3319,7 +3319,7 @@
             currentDownloadUrl = workData.download_url;
             setupDownloadButton();
           } else if (workData.type === "uploaded" && !workData.completed) {
-            // 업로드만 된 상태 복원 (처리는 아직 안 함)
+            // 업로드만 된 상태 복원 (작업는 아직 안 함)
             console.log("📤 업로드만 된 상태 복원:", workData);
 
             if (workData.video_type === "uploaded") {
@@ -3349,7 +3349,7 @@
                   `📁 localStorage에서 비디오 복원 완료: uploaded_video_${workId}`
                 );
 
-                // 처리 메시지 표시 (대기 상태)
+                // 작업 메시지 표시 (대기 상태)
                 if (processingMessage) {
                   processingMessage.style.display = "block";
                 }
@@ -3359,11 +3359,11 @@
                 }
                 if (processingTipMessage) {
                   processingTipMessage.textContent =
-                    "처리할 작업을 선택해주세요 ✨";
+                    "작업할 작업을 선택해주세요 ✨";
                 }
 
                 showMessage(
-                  "✅ 이전에 업로드된 비디오가 복원되었습니다! 처리를 계속하세요.",
+                  "✅ 이전에 업로드된 비디오가 복원되었습니다! 작업를 계속하세요.",
                   "success"
                 );
               } else {
@@ -3405,7 +3405,7 @@
                   `📁 localStorage에서 이미지 복원 완료: uploaded_image_${workId}`
                 );
 
-                // currentImageFile 복원 (추가 처리를 위해)
+                // currentImageFile 복원 (추가 작업를 위해)
                 fetch(savedImageData)
                   .then((response) => response.blob())
                   .then((blob) => {
@@ -3422,12 +3422,12 @@
                     );
                   })
                   .catch((error) => {
-                    console.error("❌ 업로드된 이미지 파일 복원 실패:", error);
+                    console.error("❌ 업로드된 이미지 작업 복원 실패:", error);
                   });
 
                 // 업로드된 상태 메시지
                 showMessage(
-                  "✅ 이전에 업로드된 이미지가 복원되었습니다! 처리를 계속하세요.",
+                  "✅ 이전에 업로드된 이미지가 복원되었습니다! 작업를 계속하세요.",
                   "success"
                 );
               } else {
@@ -3451,7 +3451,7 @@
             emptyState.classList.add("hide");
             mainContainer.classList.remove("upload-only");
 
-            // 비디오 처리 완료 상태 표시
+            // 비디오 작업 완료 상태 표시
             hideVideoProcessingStatus();
 
             // 다운로드 URL 설정

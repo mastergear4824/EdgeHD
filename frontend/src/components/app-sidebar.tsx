@@ -29,12 +29,12 @@ import { Button } from "@/components/ui/button";
 const processingModes = [
   {
     id: "image",
-    title: "이미지 처리",
+    title: "이미지 작업",
     icon: ImageIcon,
   },
   {
     id: "video",
-    title: "비디오 처리",
+    title: "비디오 작업",
     icon: Video,
   },
 ];
@@ -140,7 +140,7 @@ export function AppSidebar({
       className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row bg-background dark:bg-gray-900"
       {...props}
     >
-      {/* 첫 번째 사이드바 - 처리 모드 선택 */}
+      {/* 첫 번째 사이드바 - 작업 모드 선택 */}
       <Sidebar
         collapsible="none"
         className="!w-[calc(var(--sidebar-width-icon)_+_1px)] border-r bg-background dark:bg-gray-900 border-border dark:border-gray-700"
@@ -224,12 +224,12 @@ export function AppSidebar({
       {/* 두 번째 사이드바 - 파일 리스트 */}
       <Sidebar
         collapsible="none"
-        className="hidden flex-1 md:flex bg-background dark:bg-gray-900"
+        className="flex-1 bg-background dark:bg-gray-900"
       >
         <SidebarHeader className="gap-3.5 border-b p-4 bg-background dark:bg-gray-800 border-border dark:border-gray-700">
           <div className="flex w-full items-center justify-between">
             <div className="text-base font-medium text-foreground dark:text-white">
-              {currentMode === "image" ? "이미지 파일" : "비디오 파일"}
+              {currentMode === "image" ? "이미지 작업" : "비디오 작업"}
             </div>
             <Label className="flex items-center gap-2 text-sm text-muted-foreground dark:text-gray-400">
               <span>{filteredFiles.length}개</span>
@@ -240,7 +240,7 @@ export function AppSidebar({
               onClick={() => fileInputRef.current?.click()}
               className="flex items-center gap-2 w-full bg-primary dark:bg-blue-600 hover:bg-primary/90 dark:hover:bg-blue-700 text-primary-foreground dark:text-white"
             >
-              <Plus className="h-5 w-5" />새 파일 추가
+              <Plus className="h-5 w-5" />새 작업 추가
             </Button>
           </div>
           <input
@@ -304,7 +304,7 @@ export function AppSidebar({
                       {file.processingResults &&
                         file.processingResults.length > 0 && (
                           <div className="text-xs text-muted-foreground mt-1">
-                            {file.processingResults.length}개 처리 완료
+                            {file.processingResults.length}개 작업 완료
                           </div>
                         )}
                     </div>
@@ -317,20 +317,41 @@ export function AppSidebar({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
                               const latestResult =
                                 file.processingResults![
                                   file.processingResults!.length - 1
                                 ];
-                              const link = document.createElement("a");
-                              link.href = `${latestResult.resultUrl}?download=true`;
-                              link.download = `processed_${
-                                file.originalName || file.fileName
-                              }`;
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
+
+                              try {
+                                // 백엔드 API를 통해 파일 다운로드
+                                const response = await fetch(
+                                  `http://localhost:9090/api/image/${file.id}/result/${latestResult.id}`,
+                                  { method: "GET" }
+                                );
+
+                                if (response.ok) {
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const link = document.createElement("a");
+                                  link.href = url;
+                                  link.download = `processed_${
+                                    file.originalName || file.fileName
+                                  }`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  window.URL.revokeObjectURL(url);
+                                } else {
+                                  console.error(
+                                    "다운로드 실패:",
+                                    response.statusText
+                                  );
+                                }
+                              } catch (error) {
+                                console.error("다운로드 중 오류:", error);
+                              }
                             }}
                             className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                           >

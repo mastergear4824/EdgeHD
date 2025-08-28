@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Timeline from "@/components/timeline";
 import {
   Loader2,
@@ -16,6 +17,12 @@ import {
   ZoomOut,
   Square,
   Video,
+  Scissors,
+  ArrowUpRight,
+  ArrowUpCircle,
+  Shapes,
+  Palette,
+  Sparkles,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -66,7 +73,7 @@ interface ProcessStep {
 interface ActionButton {
   id: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; size?: number }>;
 }
 
 interface UploadProgressInfo {
@@ -82,6 +89,14 @@ export default function Home() {
   const [selectedFile, setSelectedFile] = useState<UploadedFile | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [selectedResultId, setSelectedResultId] = useState<string | null>(null);
+  const [forceUpdateKey, setForceUpdateKey] = useState<number>(0);
+
+  // 강제 리렌더링 함수
+  const forceUpdate = () => {
+    setForceUpdateKey((prev) => prev + 1);
+    console.log("🔄 강제 리렌더링 실행");
+  };
   const [processHistory, setProcessHistory] = useState<ProcessStep[]>([]);
   const [videoFrames, setVideoFrames] = useState<string[]>([]);
   const [selectedFrameIndex, setSelectedFrameIndex] = useState(0);
@@ -165,140 +180,51 @@ export default function Home() {
     };
   }, [isPlaying, videoFrames.length, videoFps]);
 
-  // 액션 버튼 정의
+  // selectedResultId 변화 감지 및 디버깅
+  useEffect(() => {
+    console.log("🔄 selectedResultId 변화 감지:", {
+      selectedResultId,
+      isVectorResult: selectedResultId ? isVectorResultSelected() : false,
+      timestamp: new Date().toLocaleTimeString(),
+    });
+  }, [selectedResultId]);
+
+  // 액션 버튼 정의 - Lucide 아이콘 사용
   const imageActions: ActionButton[] = [
     {
       id: "remove-background",
       label: "배경제거",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      ),
+      icon: Scissors,
     },
     {
       id: "upscale-x2",
-      label: "확대x2",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10h-3m1.5-1.5v3"
-          />
-        </svg>
-      ),
+      label: "2배확대",
+      icon: ArrowUpRight,
     },
     {
       id: "upscale-x4",
-      label: "확대x4",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM16 10h-6m3-3v6"
-          />
-        </svg>
-      ),
+      label: "4배확대",
+      icon: ArrowUpCircle,
     },
     {
       id: "vectorize-color",
       label: "벡터화",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5H9"
-          />
-        </svg>
-      ),
+      icon: Shapes,
     },
     {
       id: "vectorize-bw",
-      label: "흑백벡터",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10"
-          />
-        </svg>
-      ),
+      label: "단순벡터",
+      icon: Square,
     },
     {
       id: "style-retro",
       label: "레트로",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m0 0V1h2a2 2 0 012 2v18a2 2 0 01-2 2H5a2 2 0 01-2-2V3a2 2 0 012-2h2v3"
-          />
-        </svg>
-      ),
+      icon: Sparkles,
     },
     {
       id: "style-painting",
       label: "페인팅",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-          />
-        </svg>
-      ),
+      icon: Palette,
     },
   ];
 
@@ -306,25 +232,16 @@ export default function Home() {
     {
       id: "extract-last-frame",
       label: "마지막프레임",
-      icon: ({ className }) => (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-          />
-        </svg>
-      ),
+      icon: Video,
     },
   ];
 
   const currentActions = currentMode === "image" ? imageActions : videoActions;
+
+  // 컴포넌트 마운트 시 기존 파일들 로드
+  useEffect(() => {
+    loadFilesFromBackend();
+  }, []);
 
   // 백엔드에서 파일 목록 로드
   const loadFilesFromBackend = async () => {
@@ -333,17 +250,36 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
         const files: UploadedFile[] = data.files.map(
-          (file: Record<string, unknown>) => ({
-            id: file.id as string,
-            fileName: (file.name || file.fileName) as string,
-            originalName: (file.name || file.fileName) as string,
-            fileType: file.fileType as string,
-            fileSize: (file.size || file.fileSize || 0) as number,
-            uploadedAt: new Date(file.uploadedAt as string | number | Date),
-            previewUrl: (file.preview_url || file.previewUrl || "") as string,
-            status: "completed" as const,
-            fileUrl: (file.file_url || file.fileUrl) as string,
-          })
+          (file: Record<string, unknown>) => {
+            // uploadedAt 타임스탬프 작업 (초 단위를 밀리초로 작업)
+            let uploadedAt = new Date();
+            if (file.uploadedAt) {
+              const timestamp = Number(file.uploadedAt);
+              // 타임스탬프가 초 단위인 경우 밀리초로 작업
+              if (timestamp < 10000000000) {
+                uploadedAt = new Date(timestamp * 1000);
+              } else {
+                uploadedAt = new Date(timestamp);
+              }
+            }
+
+            // 작업 결과가 있는 경우 processingResults 추가
+            const processingResults =
+              (file.processingResults as ProcessingResult[]) || [];
+
+            return {
+              id: file.id as string,
+              fileName: (file.name || file.fileName) as string,
+              originalName: (file.name || file.fileName) as string,
+              fileType: file.fileType as string,
+              fileSize: (file.size || file.fileSize || 0) as number,
+              uploadedAt: uploadedAt,
+              previewUrl: (file.preview_url || file.previewUrl || "") as string,
+              status: "completed" as const,
+              fileUrl: (file.file_url || file.fileUrl) as string,
+              processingResults: processingResults,
+            };
+          }
         );
         setUploadedFiles(files);
       }
@@ -352,7 +288,7 @@ export default function Home() {
     }
   };
 
-  // 파일 업로드 처리
+  // 파일 업로드 작업
   const handleFileUpload = async (file: File) => {
     const taskId = Date.now().toString();
     const isVideo = file.type.startsWith("video/");
@@ -386,9 +322,19 @@ export default function Home() {
 
         setUploadProgress({
           isUploading: true,
-          message: isVideo ? "비디오 프레임 분해 중..." : "이미지 처리 중...",
+          message: isVideo ? "비디오 프레임 분해 중..." : "이미지 작업 중...",
           progress: 50,
         });
+
+        // 백엔드에서 반환된 정보를 기반으로 previewUrl 설정
+        let previewUrl = "";
+        if (!isVideo) {
+          // 이미지의 경우 백엔드 API를 통해 로딩
+          previewUrl = `http://localhost:9090/api/image/${taskId}`;
+        } else if (result.preview_file) {
+          // 비디오의 경우 첫 프레임 사용
+          previewUrl = `http://localhost:9090/api/download/${result.preview_file}`;
+        }
 
         const newFile: UploadedFile = {
           id: taskId,
@@ -397,7 +343,7 @@ export default function Home() {
           fileType: file.type,
           fileSize: file.size,
           uploadedAt: new Date(),
-          previewUrl: result.preview_url || "",
+          previewUrl: previewUrl,
           status: "completed",
           fileUrl: result.file_url,
         };
@@ -430,6 +376,11 @@ export default function Home() {
         }, 1000);
 
         setUploadedFiles((prev) => [...prev, newFile]);
+
+        // 업로드된 파일을 자동으로 선택 (백엔드 세션 저장 대기)
+        setTimeout(() => {
+          handleFileSelect(newFile);
+        }, 500);
       } else {
         console.error("업로드 실패:", response.statusText);
         setUploadProgress({
@@ -448,8 +399,9 @@ export default function Home() {
     }
   };
 
-  // 파일 선택 처리
+  // 파일 선택 작업
   const handleFileSelect = async (file: UploadedFile) => {
+    console.log("🔍 파일 선택:", file.id, file.originalName);
     setSelectedFile(file);
     setProcessHistory([]);
 
@@ -469,12 +421,11 @@ export default function Home() {
         console.error("비디오 프레임 로드 실패:", error);
       }
     } else {
-      // 이미지 모드
-      if (file.previewUrl) {
-        setCurrentImageUrl(file.previewUrl);
-      }
+      // 이미지 모드 - 백엔드 API를 통해 로딩
+      const imageUrl = `http://localhost:9090/api/image/${file.id}`;
+      setCurrentImageUrl(imageUrl);
 
-      // 기존 처리 히스토리 로드
+      // 기존 작업 히스토리 로드
       try {
         const response = await fetch(`http://localhost:9090/api/files`);
         if (response.ok) {
@@ -482,29 +433,96 @@ export default function Home() {
           const fileData = data.files.find(
             (f: Record<string, unknown>) => f.id === file.id
           );
-          if (fileData && fileData.process_history) {
+          if (fileData && fileData.processingResults) {
+            console.log("📝 작업 결과 발견:", fileData.processingResults);
             const history: ProcessStep[] = (
-              fileData.process_history as Record<string, unknown>[]
-            ).map((step: Record<string, unknown>) => ({
-              id: step.id as string,
-              action: step.action as string,
-              description: step.description as string,
-              resultUrl: step.resultUrl as string,
-              timestamp: new Date(step.timestamp as string | number | Date),
-              completedAt: new Date(step.completedAt as string | number | Date),
-            }));
+              fileData.processingResults as Record<string, unknown>[]
+            ).map((step: Record<string, unknown>) => {
+              // completedAt 타임스탬프 작업 (초 단위를 밀리초로 작업)
+              let completedAt = new Date();
+              if (step.completedAt) {
+                const timestamp = Number(step.completedAt);
+                // 타임스탬프가 초 단위인 경우 밀리초로 작업
+                if (timestamp < 10000000000) {
+                  completedAt = new Date(timestamp * 1000);
+                } else {
+                  completedAt = new Date(timestamp);
+                }
+              }
+
+              // 백엔드에서 제공하는 URL을 그대로 사용 (절대 URL로 작업)
+              const resultUrl = step.resultUrl
+                ? `http://localhost:9090${step.resultUrl}`
+                : `http://localhost:9090/api/image/${file.id}/result/${step.id}`;
+
+              return {
+                id: step.id as string, // 백엔드에서 생성된 실제 ID 사용
+                action: step.actionLabel as string,
+                description: step.actionLabel as string,
+                resultUrl: resultUrl,
+                timestamp: new Date(),
+                completedAt: completedAt,
+              };
+            });
+            console.log("✅ 히스토리 설정:", history);
             setProcessHistory(history);
+            console.log("🔄 현재 선택된 파일:", file.id);
+            console.log("📊 히스토리 개수:", history.length);
           }
         }
       } catch (error) {
-        console.error("처리 히스토리 로드 실패:", error);
+        console.error("작업 히스토리 로드 실패:", error);
       }
     }
+  };
+
+  // SVG 벡터화 결과 선택 여부 확인 함수
+  const isVectorResultSelected = () => {
+    // selectedResultId가 null이면 원본이 선택된 것이므로 벡터화 가능
+    console.log("🔍 isVectorResultSelected 체크:", {
+      selectedResultId,
+      processHistoryLength: processHistory.length,
+    });
+
+    if (!selectedResultId) {
+      console.log("✅ 원본 선택됨 - 벡터화 가능");
+      return false;
+    }
+
+    const selectedStep = processHistory.find(
+      (step) => step.id === selectedResultId
+    );
+
+    console.log("🔍 선택된 단계:", selectedStep);
+
+    if (!selectedStep) {
+      console.log("❌ 선택된 단계를 찾을 수 없음");
+      return false;
+    }
+
+    const isVector =
+      selectedStep.action.includes("벡터화") ||
+      selectedStep.description.includes("벡터화");
+
+    console.log("🔍 벡터화 결과인가?", isVector);
+    return isVector;
   };
 
   // 액션 실행
   const executeAction = async (actionId: string) => {
     if (!selectedFile || isProcessing) return;
+
+    // 벡터화 결과 선택 시 모든 작업 차단
+    if (isVectorResultSelected()) {
+      const isVectorizeAction =
+        actionId === "vectorize-color" || actionId === "vectorize-bw";
+      alert(
+        isVectorizeAction
+          ? "⚠️ SVG 벡터화 결과는 다시 벡터화할 수 없습니다.\n\n원본 이미지나 다른 처리 결과를 선택해주세요."
+          : "⚠️ SVG 벡터화 결과로는 이미지 처리 작업을 할 수 없습니다.\n\n원본 이미지나 다른 처리 결과를 선택해주세요."
+      );
+      return; // 작업 취소
+    }
 
     setIsProcessing(true);
 
@@ -519,6 +537,22 @@ export default function Home() {
 
       const formData = new FormData();
       formData.append("task_id", backendTaskId);
+
+      // 선택된 히스토리 기준점 확인 및 전달
+      if (selectedResultId) {
+        formData.append("base_result_id", selectedResultId);
+        console.log(`🎯 작업 기준점 설정: ${selectedResultId}`);
+        console.log(`🎯 현재 캔버스 이미지: ${currentImageUrl}`);
+      } else {
+        console.log("🔄 원본 이미지에서 작업 시작");
+        console.log(`🔄 현재 캔버스 이미지: ${currentImageUrl}`);
+      }
+
+      // 📋 FormData 내용 전체 확인
+      console.log("📋 전송할 FormData 내용:");
+      for (const [key, value] of formData.entries()) {
+        console.log(`  ${key}: ${value}`);
+      }
 
       let endpoint = "";
       switch (actionId) {
@@ -535,19 +569,21 @@ export default function Home() {
           break;
         case "vectorize-color":
           endpoint = "/api/vectorize";
-          formData.append("color_mode", "color");
+          formData.append("n_colors", "8");
           break;
         case "vectorize-bw":
           endpoint = "/api/vectorize";
-          formData.append("color_mode", "bw");
+          formData.append("n_colors", "2");
           break;
         case "style-retro":
           endpoint = "/api/style-transfer";
-          formData.append("style", "retro");
+          formData.append("style", "vangogh");
+          formData.append("strength", "1.0");
           break;
         case "style-painting":
           endpoint = "/api/style-transfer";
-          formData.append("style", "painting");
+          formData.append("style", "oil_painting");
+          formData.append("strength", "1.0");
           break;
         case "extract-last-frame":
           endpoint = "/api/extract-last-frame";
@@ -564,57 +600,99 @@ export default function Home() {
       if (response.ok) {
         const result = await response.json();
 
-        // 스타일 전송의 경우 multiple results 처리
-        if (actionId.startsWith("style-") && result.results) {
-          const newSteps: ProcessStep[] = result.results.map(
-            (res: Record<string, unknown>, index: number) => ({
-              id: `${Date.now()}_${index}`,
-              action: getActionLabel(actionId),
-              description: `${getActionLabel(actionId)} 결과 ${index + 1}`,
-              resultUrl: res.result_url as string,
-              timestamp: new Date(),
-              completedAt: new Date((res.completed_at as number) * 1000),
-            })
-          );
+        // 단일 결과 작업 (백엔드 응답 형식에 맞게)
+        const newStep: ProcessStep = {
+          id: Date.now().toString(),
+          action: getActionLabel(actionId),
+          description: `${getActionLabel(actionId)} 작업 완료`,
+          resultUrl: result.preview_url || result.download_url || "",
+          timestamp: new Date(),
+          completedAt: new Date(),
+        };
 
-          setProcessHistory((prev) => [...prev, ...newSteps]);
-          if (newSteps.length > 0) {
-            setCurrentImageUrl(newSteps[0].resultUrl);
+        setProcessHistory((prev) => [...prev, newStep]);
+        // 작업 완료 후 자동으로 결과 이미지로 변경하지 않음 (사용자 선택 유지)
+
+        // 백엔드에서 최신 파일 정보를 다시 로드하여 정확한 processingResults ID 동기화
+        setTimeout(async () => {
+          if (selectedFile) {
+            try {
+              console.log("🔄 히스토리 동기화 시작...");
+              const response = await fetch(`http://localhost:9090/api/files`);
+              if (response.ok) {
+                const data = await response.json();
+                const fileData = data.files.find(
+                  (f: Record<string, unknown>) => f.id === selectedFile.id
+                );
+                if (fileData && fileData.processingResults) {
+                  console.log(
+                    "📄 백엔드 processingResults:",
+                    fileData.processingResults
+                  );
+                  const history: ProcessStep[] = (
+                    fileData.processingResults as Record<string, unknown>[]
+                  ).map((step: Record<string, unknown>) => {
+                    // completedAt 타임스탬프 작업
+                    let completedAt = new Date();
+                    if (step.completedAt) {
+                      const timestamp = Number(step.completedAt);
+                      if (timestamp < 10000000000) {
+                        completedAt = new Date(timestamp * 1000);
+                      } else {
+                        completedAt = new Date(timestamp);
+                      }
+                    }
+
+                    // 백엔드 API를 통해 작업 결과 이미지 로딩
+                    const resultUrl = `http://localhost:9090/api/image/${selectedFile?.id}/result/${step.id}`;
+
+                    console.log(
+                      `📝 히스토리 항목: ID=${step.id}, Action=${step.actionLabel}`
+                    );
+                    return {
+                      id: step.id as string, // 백엔드에서 생성된 실제 ID 사용
+                      action: step.actionLabel as string,
+                      description: step.actionLabel as string,
+                      resultUrl: resultUrl,
+                      timestamp: new Date(),
+                      completedAt: completedAt,
+                    };
+                  });
+                  setProcessHistory(history);
+                  console.log(
+                    `✅ 히스토리 동기화 완료: ${history.length}개 항목`
+                  );
+                }
+              }
+            } catch (error) {
+              console.error("히스토리 동기화 실패:", error);
+            }
           }
-        } else {
-          // 단일 결과 처리
-          const newStep: ProcessStep = {
-            id: Date.now().toString(),
-            action: getActionLabel(actionId),
-            description: `${getActionLabel(actionId)} 처리 완료`,
-            resultUrl: result.result_url as string,
-            timestamp: new Date(),
-            completedAt: new Date((result.completed_at as number) * 1000),
-          };
-
-          setProcessHistory((prev) => [...prev, newStep]);
-          setCurrentImageUrl(result.result_url);
-        }
+        }, 1000); // 1초 후 동기화
       } else {
-        console.error("처리 실패:", response.statusText);
+        console.error("작업 실패:", response.statusText);
+        alert(
+          `❌ 작업 실패: ${response.status} ${response.statusText}\n문제가 지속되면 브라우저 콘솔을 확인하세요.`
+        );
       }
     } catch (error) {
       console.error("액션 실행 오류:", error);
+      alert(`❌ 네트워크 오류: ${error}\n연결을 확인하고 다시 시도하세요.`);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // 액션 라벨 변환
+  // 액션 라벨 작업
   const getActionLabel = (actionId: string): string => {
     const labels: { [key: string]: string } = {
       "remove-background": "배경 제거",
       "upscale-x2": "2배 확대",
       "upscale-x4": "4배 확대",
       "vectorize-color": "컬러 벡터화",
-      "vectorize-bw": "흑백 벡터화",
-      "style-retro": "레트로 스타일",
-      "style-painting": "페인팅 스타일",
+      "vectorize-bw": "단순 벡터화",
+      "style-retro": "레트로",
+      "style-painting": "페인팅",
       "extract-last-frame": "마지막 프레임 추출",
     };
     return labels[actionId] || actionId;
@@ -764,7 +842,17 @@ export default function Home() {
 
   // 컴포넌트 마운트 시 데이터 로드
   useEffect(() => {
-    loadFilesFromBackend();
+    const initializeApp = async () => {
+      await loadFilesFromBackend();
+
+      // 파일 목록이 로드된 후 첫 번째 파일을 자동 선택
+      if (uploadedFiles.length > 0 && !selectedFile) {
+        console.log("🚀 첫 번째 파일 자동 선택:", uploadedFiles[0].id);
+        await handleFileSelect(uploadedFiles[0]);
+      }
+    };
+
+    initializeApp();
   }, []);
 
   // 비디오 프레임 초기 프리로딩
@@ -802,7 +890,7 @@ export default function Home() {
             <BreadcrumbList>
               <BreadcrumbItem>
                 <BreadcrumbPage className="text-foreground dark:text-gray-300">
-                  {currentMode === "image" ? "이미지 처리" : "비디오 처리"}
+                  {currentMode === "image" ? "이미지 작업" : "비디오 작업"}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
@@ -1103,26 +1191,56 @@ export default function Home() {
             ) : (
               // 이미지 모드: 기존 좌우 레이아웃
               <div className="flex h-full w-full min-w-0">
-                {/* 왼쪽 도구 패널 - 포토샵 스타일 */}
-                <div className="w-16 border-r flex flex-col items-center py-2 gap-1 bg-muted/20 dark:bg-gray-800 border-border dark:border-gray-700">
+                {/* 왼쪽 도구 패널 - 깔끔한 스타일 */}
+                <div className="w-20 border-r flex flex-col items-center py-4 gap-3 bg-background border-border">
                   {currentActions.map((action) => {
                     const Icon = action.icon;
+                    const isVectorizeAction =
+                      action.id === "vectorize-color" ||
+                      action.id === "vectorize-bw";
+
+                    // 벡터화 결과가 선택된 경우 모든 처리 버튼 비활성화
+                    const isVectorResultCurrentlySelected =
+                      isVectorResultSelected();
+                    const isDisabledDueToVector =
+                      isVectorResultCurrentlySelected;
+
+                    // 실시간 디버깅
+                    if (action.id === "remove-background") {
+                      console.log(`🔍 [${action.id}] 버튼 상태:`, {
+                        selectedResultId,
+                        isVectorResultCurrentlySelected,
+                        isDisabledDueToVector,
+                        isProcessing,
+                      });
+                    }
+
                     return (
                       <Button
                         key={action.id}
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         onClick={() => executeAction(action.id)}
-                        disabled={isProcessing}
-                        className="w-12 h-12 p-0 flex flex-col items-center justify-center text-xs text-foreground dark:text-gray-300 hover:bg-muted dark:hover:bg-gray-700 dark:hover:text-white"
-                        title={action.label}
+                        disabled={isProcessing || isDisabledDueToVector}
+                        className={`w-16 h-14 p-1 flex flex-col items-center justify-center text-xs border transition-all duration-200 gap-1 ${
+                          isDisabledDueToVector
+                            ? "bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50"
+                            : "hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                        }`}
+                        title={
+                          isDisabledDueToVector
+                            ? isVectorizeAction
+                              ? "SVG 벡터화 결과는 다시 벡터화할 수 없습니다"
+                              : "SVG 벡터화 결과로는 다른 이미지 처리 작업을 할 수 없습니다. 원본 이미지나 다른 처리 결과를 선택해주세요."
+                            : action.label
+                        }
                       >
                         {isProcessing ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-5 w-5 animate-spin" />
                         ) : (
                           <>
-                            <Icon className="h-4 w-4" />
-                            <span className="text-[10px] leading-tight mt-0.5 truncate w-full text-center">
+                            <Icon className="h-5 w-5" />
+                            <span className="text-[10px] leading-tight text-center font-medium">
                               {action.label}
                             </span>
                           </>
@@ -1157,7 +1275,7 @@ export default function Home() {
 
                   {/* 이미지인 경우: 기존 캔버스 */}
                   <div className="flex-1 flex items-center justify-center p-6 pb-2 min-h-0">
-                    <div className="w-full max-w-full flex items-center justify-center h-[calc(100vh-8rem)]">
+                    <div className="w-full max-w-full flex items-center justify-center h-[calc(100vh-10rem)]">
                       {currentImageUrl ? (
                         <img
                           src={currentImageUrl}
@@ -1173,24 +1291,267 @@ export default function Home() {
                   </div>
                 </div>
 
-                {/* 오른쪽 처리 히스토리 패널 - 이미지인 경우에만 표시 */}
+                {/* 오른쪽 작업 히스토리 패널 - 이미지인 경우에만 표시 */}
                 <div className="w-80 border-l bg-muted/10 flex flex-col">
-                  <div className="p-4 border-b">
-                    <h3 className="text-lg font-semibold">처리 히스토리</h3>
+                  <div className="p-4 border-b flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold">작업 히스토리</h3>
+                      {selectedFile && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-xs h-7"
+                          onClick={() => {
+                            console.log("🔄 원본으로 버튼 클릭");
+                            console.log(
+                              "🔍 클릭 전 selectedResultId:",
+                              selectedResultId
+                            );
+
+                            const originalUrl = `http://localhost:9090/api/image/${selectedFile.id}`;
+                            setCurrentImageUrl(originalUrl);
+                            setSelectedResultId(null); // 원본 선택 시 ID 초기화
+
+                            console.log(
+                              "🔄 원본 이미지 선택 - selectedResultId를 null로 설정"
+                            );
+
+                            // 선택된 파일을 원본으로 리셋
+                            const resetFile = {
+                              ...selectedFile,
+                              previewUrl: originalUrl,
+                            };
+                            setSelectedFile(resetFile);
+
+                            // 강제 리렌더링
+                            forceUpdate();
+
+                            // 강제로 리렌더링을 위해 상태 업데이트
+                            setTimeout(() => {
+                              console.log(
+                                "🔍 setTimeout 후 selectedResultId:",
+                                selectedResultId
+                              );
+                              console.log(
+                                "🔍 isVectorResultSelected():",
+                                isVectorResultSelected()
+                              );
+                              console.log(
+                                "캔버스 이미지 변경: 원본으로 복원 완료"
+                              );
+                            }, 100);
+                          }}
+                          title="원본 이미지로 돌아가서 새로운 작업 시작"
+                        >
+                          원본으로
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1 overflow-y-auto">
-                    {processHistory.length > 0 ? (
-                      <div className="p-2 space-y-2">
+                  <ScrollArea className="h-[calc(100vh-10rem)]">
+                    {(() => {
+                      console.log("🖥️ 렌더링 - 선택된 파일:", selectedFile?.id);
+                      console.log(
+                        "🖥️ 렌더링 - 히스토리 개수:",
+                        processHistory.length
+                      );
+                      return null;
+                    })()}
+                    {selectedFile ? (
+                      <div className="p-4 space-y-3">
+                        {/* 원본 이미지 항목 */}
+                        <Card className="p-4 hover:bg-muted/50 transition-colors bg-blue-50/50 border-blue-200">
+                          <div className="flex items-start gap-3 mb-2">
+                            <div className="flex-shrink-0">
+                              <img
+                                src={`http://localhost:9090/api/image/${selectedFile.id}`}
+                                alt="원본 이미지"
+                                className={`w-12 h-12 object-cover rounded border cursor-pointer transition-all duration-200 ${
+                                  currentImageUrl ===
+                                  `http://localhost:9090/api/image/${selectedFile.id}`
+                                    ? "border-blue-500 border-2 shadow-md"
+                                    : "border-gray-300 hover:opacity-80 hover:border-blue-300"
+                                }`}
+                                onClick={() => {
+                                  console.log("🔄 원본 이미지 클릭");
+                                  console.log(
+                                    "🔍 클릭 전 selectedResultId:",
+                                    selectedResultId
+                                  );
+
+                                  const originalUrl = `http://localhost:9090/api/image/${selectedFile.id}`;
+                                  setCurrentImageUrl(originalUrl);
+                                  setSelectedResultId(null); // 원본 선택 시 ID 초기화
+
+                                  console.log(
+                                    "🔄 원본 이미지 선택 - selectedResultId를 null로 설정"
+                                  );
+
+                                  const resetFile = {
+                                    ...selectedFile,
+                                    previewUrl: originalUrl,
+                                  };
+                                  setSelectedFile(resetFile);
+
+                                  // 강제 리렌더링
+                                  forceUpdate();
+
+                                  setTimeout(() => {
+                                    console.log(
+                                      "🔍 setTimeout 후 selectedResultId:",
+                                      selectedResultId
+                                    );
+                                    console.log(
+                                      "🔍 isVectorResultSelected():",
+                                      isVectorResultSelected()
+                                    );
+                                    console.log(
+                                      "원본 이미지 클릭으로 복원 완료"
+                                    );
+                                  }, 100);
+                                }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                }}
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <h4
+                                  className="font-medium text-sm text-blue-700 cursor-pointer hover:text-blue-900"
+                                  onClick={() => {
+                                    console.log("🔄 원본 이미지 제목 클릭");
+                                    console.log(
+                                      "🔍 클릭 전 selectedResultId:",
+                                      selectedResultId
+                                    );
+
+                                    const originalUrl = `http://localhost:9090/api/image/${selectedFile.id}`;
+                                    setCurrentImageUrl(originalUrl);
+                                    setSelectedResultId(null); // 원본 선택 시 ID 초기화
+
+                                    console.log(
+                                      "🔄 원본 이미지 선택 - selectedResultId를 null로 설정"
+                                    );
+
+                                    const resetFile = {
+                                      ...selectedFile,
+                                      previewUrl: originalUrl,
+                                    };
+                                    setSelectedFile(resetFile);
+
+                                    // 강제 리렌더링
+                                    forceUpdate();
+
+                                    setTimeout(() => {
+                                      console.log(
+                                        "🔍 setTimeout 후 selectedResultId:",
+                                        selectedResultId
+                                      );
+                                      console.log(
+                                        "🔍 isVectorResultSelected():",
+                                        isVectorResultSelected()
+                                      );
+                                      console.log(
+                                        "원본 이미지 제목 클릭으로 복원 완료"
+                                      );
+                                    }, 100);
+                                  }}
+                                >
+                                  원본 이미지
+                                </h4>
+                                {!selectedResultId && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary text-primary-foreground">
+                                    선택됨
+                                  </span>
+                                )}
+                                {currentImageUrl ===
+                                  `http://localhost:9090/api/image/${selectedFile.id}` &&
+                                  selectedResultId && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                      표시중
+                                    </span>
+                                  )}
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                업로드한 원본 파일
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {(typeof selectedFile.uploadedAt === "number"
+                                  ? new Date(selectedFile.uploadedAt * 1000)
+                                  : selectedFile.uploadedAt
+                                ).toLocaleString("ko-KR", {
+                                  year: "numeric",
+                                  month: "2-digit",
+                                  day: "2-digit",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+
+                        {/* 작업 히스토리 */}
                         {processHistory.map((step) => (
                           <Card
                             key={step.id}
                             className="p-4 hover:bg-muted/50 transition-colors"
                           >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex-1">
-                                <h4 className="font-medium text-sm">
-                                  {step.action}
-                                </h4>
+                            <div className="flex items-start gap-3 mb-2">
+                              {/* 썸네일 */}
+                              <div className="flex-shrink-0">
+                                <img
+                                  src={step.resultUrl}
+                                  alt={step.action}
+                                  className={`w-12 h-12 object-cover rounded border cursor-pointer transition-all duration-200 ${
+                                    currentImageUrl === step.resultUrl
+                                      ? "border-blue-500 border-2 shadow-md"
+                                      : "border-gray-300 hover:opacity-80 hover:border-blue-300"
+                                  }`}
+                                  onClick={() => {
+                                    setCurrentImageUrl(step.resultUrl);
+
+                                    // 히스토리 스텝의 ID를 직접 사용 (백엔드 동기화에서 실제 result ID가 저장됨)
+                                    setSelectedResultId(step.id);
+                                    console.log(
+                                      `🔄 히스토리 선택: step.id = ${step.id}`
+                                    );
+                                    console.log(
+                                      `🔄 선택된 이미지 URL: ${step.resultUrl}`
+                                    );
+
+                                    // 현재 작업 기준점을 이 작업 결과로 업데이트
+                                    if (selectedFile) {
+                                      const updatedFile = {
+                                        ...selectedFile,
+                                        previewUrl: step.resultUrl,
+                                      };
+                                      setSelectedFile(updatedFile);
+                                    }
+
+                                    console.log(
+                                      `캔버스 이미지 변경: ${step.action} 결과로 전환`
+                                    );
+                                  }}
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = "none";
+                                  }}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <h4 className="font-medium text-sm">
+                                    {step.action}
+                                  </h4>
+                                  {currentImageUrl === step.resultUrl && (
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                                      선택
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground mt-1">
                                   {step.description}
                                 </p>
@@ -1210,10 +1571,19 @@ export default function Home() {
                                   size="sm"
                                   className="h-7 px-2 text-xs"
                                   onClick={() => {
-                                    window.open(
-                                      `${step.resultUrl}?download=true`,
-                                      "_blank"
-                                    );
+                                    const link = document.createElement("a");
+                                    // 절대 URL로 변환하여 다운로드
+                                    const downloadUrl =
+                                      step.resultUrl.startsWith("http")
+                                        ? `${step.resultUrl}?download=true`
+                                        : `http://localhost:9090${step.resultUrl}?download=true`;
+                                    link.href = downloadUrl;
+                                    link.download = `processed_${
+                                      step.action
+                                    }_${Date.now()}`;
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
                                   }}
                                 >
                                   <Download className="h-3 w-3 mr-1" />
@@ -1223,10 +1593,51 @@ export default function Home() {
                                   variant="outline"
                                   size="sm"
                                   className="h-7 px-2 text-xs"
-                                  onClick={() => {
-                                    setProcessHistory((prev) =>
-                                      prev.filter((s) => s.id !== step.id)
-                                    );
+                                  onClick={async () => {
+                                    if (!selectedFile) return;
+
+                                    try {
+                                      const response = await fetch(
+                                        `http://localhost:9090/api/delete-processing-result/${selectedFile.id}/${step.id}`,
+                                        { method: "DELETE" }
+                                      );
+
+                                      if (response.ok) {
+                                        // 로컬 상태에서도 제거
+                                        setProcessHistory((prev) =>
+                                          prev.filter((s) => s.id !== step.id)
+                                        );
+                                        console.log(
+                                          "작업 결과가 삭제되었습니다."
+                                        );
+
+                                        // 선택된 파일 정보도 업데이트
+                                        if (selectedFile) {
+                                          const updatedFile = {
+                                            ...selectedFile,
+                                            processingResults:
+                                              selectedFile.processingResults?.filter(
+                                                (r) => r.id !== step.id
+                                              ) || [],
+                                          };
+                                          setSelectedFile(updatedFile);
+                                        }
+                                      } else {
+                                        const errorData = await response.json();
+                                        console.error(
+                                          "삭제 실패:",
+                                          errorData.error || response.statusText
+                                        );
+                                        alert(
+                                          `삭제 실패: ${
+                                            errorData.error ||
+                                            response.statusText
+                                          }`
+                                        );
+                                      }
+                                    } catch (error) {
+                                      console.error("삭제 중 오류:", error);
+                                    }
                                   }}
                                 >
                                   <Trash2 className="h-3 w-3 mr-1" />
@@ -1238,18 +1649,18 @@ export default function Home() {
                         ))}
                       </div>
                     ) : (
-                      <div className="flex items-center justify-center h-full text-center text-muted-foreground">
+                      <div className="flex items-center justify-center min-h-[300px] text-center text-muted-foreground p-4">
                         <div>
-                          <div className="mb-2">📝</div>
+                          <div className="mb-2 text-2xl">📝</div>
                           <p className="text-sm">
-                            처리 히스토리가
+                            작업 히스토리가
                             <br />
                             여기에 표시됩니다
                           </p>
                         </div>
                       </div>
                     )}
-                  </div>
+                  </ScrollArea>
                 </div>
               </div>
             )

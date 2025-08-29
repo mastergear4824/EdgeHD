@@ -338,6 +338,7 @@ def remove_background():
     try:
         task_id = request.form.get('task_id')
         base_result_id = request.form.get('base_result_id')  # 작업 기준점
+        background_color = request.form.get('background_color', 'transparent')  # 배경 색상
         
         if not task_id or task_id not in session_storage:
             return jsonify({'error': '유효하지 않은 task_id입니다.'}), 400
@@ -368,9 +369,33 @@ def remove_background():
         # 배경 제거
         result_image = ai_model.remove_background(image)
         
+        # 배경 색상에 따른 처리
+        if background_color != 'transparent':
+            # 새로운 배경 이미지 생성
+            background = Image.new('RGB', result_image.size)
+            
+            if background_color == 'green':
+                background = Image.new('RGB', result_image.size, (0, 255, 0))  # 순녹색 (크로마키)
+            elif background_color == 'black':
+                background = Image.new('RGB', result_image.size, (0, 0, 0))  # 검은색
+            elif background_color == 'white':
+                background = Image.new('RGB', result_image.size, (255, 255, 255))  # 흰색
+            elif background_color == 'red':
+                background = Image.new('RGB', result_image.size, (255, 0, 0))  # 순빨강 (크로마키)
+            elif background_color == 'blue':
+                background = Image.new('RGB', result_image.size, (0, 0, 255))  # 순파랑 (크로마키)
+            elif background_color == 'yellow':
+                background = Image.new('RGB', result_image.size, (255, 255, 0))  # 순노랑 (크로마키)
+            
+            # 알파 채널이 있는 경우 배경과 합성
+            if result_image.mode == 'RGBA':
+                background.paste(result_image, mask=result_image.split()[-1])  # 알파 마스크 사용
+                result_image = background
+        
         # 고유한 결과 파일명 생성 (재실행 지원)
         timestamp_ms = int(time.time() * 1000)
-        result_filename = f"removed_{task_id}_{timestamp_ms}.png"
+        bg_suffix = f"_{background_color}" if background_color != 'transparent' else ""
+        result_filename = f"removed_{task_id}{bg_suffix}_{timestamp_ms}.png"
         result_path = DOWNLOAD_FOLDER / result_filename
         
         if result_image.mode != 'RGBA':

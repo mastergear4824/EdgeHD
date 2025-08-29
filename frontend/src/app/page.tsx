@@ -6,6 +6,12 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Timeline from "@/components/timeline";
 import {
   Loader2,
@@ -23,6 +29,18 @@ import {
   Shapes,
   Palette,
   Sparkles,
+  ChevronDown,
+  Layers3,
+  Layers2,
+  PaintBucket,
+  Circle,
+  Maximize2,
+  Paintbrush2,
+  Waves,
+  Square as SquareIcon,
+  Zap,
+  Eye,
+  Contrast,
 } from "lucide-react";
 import {
   Breadcrumb,
@@ -192,38 +210,23 @@ export default function Home() {
   // 액션 버튼 정의 - Lucide 아이콘 사용
   const imageActions: ActionButton[] = [
     {
-      id: "remove-background",
-      label: "배경제거",
-      icon: Scissors,
+      id: "background",
+      label: "배경작업",
+      icon: Zap,
     },
     {
-      id: "upscale-x2",
-      label: "2배확대",
-      icon: ArrowUpRight,
+      id: "upscale",
+      label: "업스케일",
+      icon: ZoomIn,
     },
     {
-      id: "upscale-x4",
-      label: "4배확대",
-      icon: ArrowUpCircle,
-    },
-    {
-      id: "vectorize-color",
+      id: "vectorize",
       label: "벡터화",
       icon: Shapes,
     },
     {
-      id: "vectorize-bw",
-      label: "단순벡터",
-      icon: Square,
-    },
-    {
-      id: "style-retro",
-      label: "레트로",
-      icon: Sparkles,
-    },
-    {
-      id: "style-painting",
-      label: "페인팅",
+      id: "style",
+      label: "스타일",
       icon: Palette,
     },
   ];
@@ -514,8 +517,7 @@ export default function Home() {
 
     // 벡터화 결과 선택 시 모든 작업 차단
     if (isVectorResultSelected()) {
-      const isVectorizeAction =
-        actionId === "vectorize-color" || actionId === "vectorize-bw";
+      const isVectorizeAction = actionId.startsWith("vectorize");
       alert(
         isVectorizeAction
           ? "⚠️ SVG 벡터화 결과는 다시 벡터화할 수 없습니다.\n\n원본 이미지나 다른 처리 결과를 선택해주세요."
@@ -556,22 +558,55 @@ export default function Home() {
 
       let endpoint = "";
       switch (actionId) {
-        case "remove-background":
+        case "background-transparent":
           endpoint = "/api/remove-background";
+          formData.append("background_color", "transparent");
           break;
-        case "upscale-x2":
+        case "background-green":
+          endpoint = "/api/remove-background";
+          formData.append("background_color", "green");
+          break;
+        case "background-black":
+          endpoint = "/api/remove-background";
+          formData.append("background_color", "black");
+          break;
+        case "background-white":
+          endpoint = "/api/remove-background";
+          formData.append("background_color", "white");
+          break;
+        case "background-red":
+          endpoint = "/api/remove-background";
+          formData.append("background_color", "red");
+          break;
+        case "background-blue":
+          endpoint = "/api/remove-background";
+          formData.append("background_color", "blue");
+          break;
+        case "background-yellow":
+          endpoint = "/api/remove-background";
+          formData.append("background_color", "yellow");
+          break;
+        case "upscale-2x":
           endpoint = "/api/upscale";
           formData.append("scale", "2");
           break;
-        case "upscale-x4":
+        case "upscale-4x":
           endpoint = "/api/upscale";
           formData.append("scale", "4");
           break;
-        case "vectorize-color":
+        case "vectorize-32":
+          endpoint = "/api/vectorize";
+          formData.append("n_colors", "32");
+          break;
+        case "vectorize-16":
+          endpoint = "/api/vectorize";
+          formData.append("n_colors", "16");
+          break;
+        case "vectorize-8":
           endpoint = "/api/vectorize";
           formData.append("n_colors", "8");
           break;
-        case "vectorize-bw":
+        case "vectorize-2":
           endpoint = "/api/vectorize";
           formData.append("n_colors", "2");
           break;
@@ -686,13 +721,21 @@ export default function Home() {
   // 액션 라벨 작업
   const getActionLabel = (actionId: string): string => {
     const labels: { [key: string]: string } = {
-      "remove-background": "배경 제거",
-      "upscale-x2": "2배 확대",
-      "upscale-x4": "4배 확대",
-      "vectorize-color": "컬러 벡터화",
-      "vectorize-bw": "단순 벡터화",
-      "style-retro": "레트로",
-      "style-painting": "페인팅",
+      "background-transparent": "배경 (투명)",
+      "background-green": "배경 (녹색)",
+      "background-black": "배경 (흑백)",
+      "background-white": "배경 (화이트)",
+      "background-red": "배경 (레드)",
+      "background-blue": "배경 (블루)",
+      "background-yellow": "배경 (노랑)",
+      "upscale-2x": "업스케일 (2배)",
+      "upscale-4x": "업스케일 (4배)",
+      "vectorize-32": "벡터화 (32색)",
+      "vectorize-16": "벡터화 (16색)",
+      "vectorize-8": "벡터화 (8색)",
+      "vectorize-2": "벡터화 (2색)",
+      "style-retro": "스타일 (레트로)",
+      "style-painting": "스타일 (페인팅)",
       "extract-last-frame": "마지막 프레임 추출",
     };
     return labels[actionId] || actionId;
@@ -1195,9 +1238,10 @@ export default function Home() {
                 <div className="w-20 border-r flex flex-col items-center py-4 gap-3 bg-background border-border">
                   {currentActions.map((action) => {
                     const Icon = action.icon;
-                    const isVectorizeAction =
-                      action.id === "vectorize-color" ||
-                      action.id === "vectorize-bw";
+                    const isVectorizeAction = action.id === "vectorize";
+                    const isUpscaleAction = action.id === "upscale";
+                    const isBackgroundAction = action.id === "background";
+                    const isStyleAction = action.id === "style";
 
                     // 벡터화 결과가 선택된 경우 모든 처리 버튼 비활성화
                     const isVectorResultCurrentlySelected =
@@ -1215,6 +1259,293 @@ export default function Home() {
                       });
                     }
 
+                    // 배경작업 버튼은 드롭다운으로 렌더링
+                    if (isBackgroundAction) {
+                      return (
+                        <DropdownMenu key={action.id}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className={`w-16 h-14 p-1 flex flex-col items-center justify-center text-xs border transition-all duration-200 gap-1 ${
+                                isDisabledDueToVector
+                                  ? "bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50"
+                                  : "hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                              }`}
+                              title={
+                                isDisabledDueToVector
+                                  ? "SVG 벡터화 결과로는 배경 작업을 할 수 없습니다"
+                                  : "배경 처리 방식을 선택하세요"
+                              }
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Icon className="h-4 w-4" />
+                                  <div className="flex items-center gap-0.5">
+                                    <span className="text-[9px] leading-none">
+                                      {action.label}
+                                    </span>
+                                    <ChevronDown className="h-2 w-2" />
+                                  </div>
+                                </>
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="center" className="w-40">
+                            <DropdownMenuItem
+                              onClick={() =>
+                                executeAction("background-transparent")
+                              }
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Eye className="h-4 w-4" />
+                              <span>투명</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("background-green")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <SquareIcon className="h-4 w-4 text-green-500" />
+                              <span>녹색</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("background-black")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <SquareIcon className="h-4 w-4 text-black" />
+                              <span>흑백</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("background-white")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <SquareIcon className="h-4 w-4 text-gray-300" />
+                              <span>화이트</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("background-red")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <SquareIcon className="h-4 w-4 text-red-500" />
+                              <span>레드</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("background-blue")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <SquareIcon className="h-4 w-4 text-blue-500" />
+                              <span>블루</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("background-yellow")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <SquareIcon className="h-4 w-4 text-yellow-500" />
+                              <span>노랑</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    }
+
+                    // 벡터화 버튼은 드롭다운으로 렌더링
+                    if (isVectorizeAction) {
+                      return (
+                        <DropdownMenu key={action.id}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className={`w-16 h-14 p-1 flex flex-col items-center justify-center text-xs border transition-all duration-200 gap-1 ${
+                                isDisabledDueToVector
+                                  ? "bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50"
+                                  : "hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                              }`}
+                              title={
+                                isDisabledDueToVector
+                                  ? "SVG 벡터화 결과는 다시 벡터화할 수 없습니다"
+                                  : "벡터화 색상 수를 선택하세요"
+                              }
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Icon className="h-4 w-4" />
+                                  <div className="flex items-center gap-0.5">
+                                    <span className="text-[9px] leading-none">
+                                      {action.label}
+                                    </span>
+                                    <ChevronDown className="h-2 w-2" />
+                                  </div>
+                                </>
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="center" className="w-40">
+                            <DropdownMenuItem
+                              onClick={() => executeAction("vectorize-32")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Layers3 className="h-4 w-4" />
+                              <span>32색</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("vectorize-16")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Layers2 className="h-4 w-4" />
+                              <span>16색</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("vectorize-8")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <PaintBucket className="h-4 w-4" />
+                              <span>8색</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("vectorize-2")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Circle className="h-4 w-4" />
+                              <span>2색</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    }
+
+                    // 업스케일 버튼은 드롭다운으로 렌더링
+                    if (isUpscaleAction) {
+                      return (
+                        <DropdownMenu key={action.id}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className={`w-16 h-14 p-1 flex flex-col items-center justify-center text-xs border transition-all duration-200 gap-1 ${
+                                isDisabledDueToVector
+                                  ? "bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50"
+                                  : "hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                              }`}
+                              title={
+                                isDisabledDueToVector
+                                  ? "SVG 벡터화 결과로는 업스케일 작업을 할 수 없습니다"
+                                  : "업스케일 배율을 선택하세요"
+                              }
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Icon className="h-4 w-4" />
+                                  <div className="flex items-center gap-0.5">
+                                    <span className="text-[9px] leading-none">
+                                      {action.label}
+                                    </span>
+                                    <ChevronDown className="h-2 w-2" />
+                                  </div>
+                                </>
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="center" className="w-40">
+                            <DropdownMenuItem
+                              onClick={() => executeAction("upscale-2x")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <ZoomIn className="h-4 w-4" />
+                              <span>2X</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("upscale-4x")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Maximize2 className="h-4 w-4" />
+                              <span>4X</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    }
+
+                    // 스타일 버튼은 드롭다운으로 렌더링
+                    if (isStyleAction) {
+                      return (
+                        <DropdownMenu key={action.id}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className={`w-16 h-14 p-1 flex flex-col items-center justify-center text-xs border transition-all duration-200 gap-1 ${
+                                isDisabledDueToVector
+                                  ? "bg-muted text-muted-foreground border-muted cursor-not-allowed opacity-50"
+                                  : "hover:bg-primary hover:text-primary-foreground hover:border-primary"
+                              }`}
+                              title={
+                                isDisabledDueToVector
+                                  ? "SVG 벡터화 결과로는 스타일 작업을 할 수 없습니다"
+                                  : "스타일 효과를 선택하세요"
+                              }
+                            >
+                              {isProcessing ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Icon className="h-4 w-4" />
+                                  <div className="flex items-center gap-0.5">
+                                    <span className="text-[9px] leading-none">
+                                      {action.label}
+                                    </span>
+                                    <ChevronDown className="h-2 w-2" />
+                                  </div>
+                                </>
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="center" className="w-40">
+                            <DropdownMenuItem
+                              onClick={() => executeAction("style-retro")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Waves className="h-4 w-4" />
+                              <span>레트로</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => executeAction("style-painting")}
+                              disabled={isProcessing || isDisabledDueToVector}
+                              className="flex items-center gap-2"
+                            >
+                              <Paintbrush2 className="h-4 w-4" />
+                              <span>페인팅</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      );
+                    }
+
+                    // 일반 버튼 렌더링
                     return (
                       <Button
                         key={action.id}
@@ -1229,9 +1560,7 @@ export default function Home() {
                         }`}
                         title={
                           isDisabledDueToVector
-                            ? isVectorizeAction
-                              ? "SVG 벡터화 결과는 다시 벡터화할 수 없습니다"
-                              : "SVG 벡터화 결과로는 다른 이미지 처리 작업을 할 수 없습니다. 원본 이미지나 다른 처리 결과를 선택해주세요."
+                            ? "SVG 벡터화 결과로는 다른 이미지 처리 작업을 할 수 없습니다. 원본 이미지나 다른 처리 결과를 선택해주세요."
                             : action.label
                         }
                       >
@@ -1463,7 +1792,7 @@ export default function Home() {
                                 </h4>
                                 {!selectedResultId && (
                                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-primary text-primary-foreground">
-                                    선택됨
+                                    선택
                                   </span>
                                 )}
                                 {currentImageUrl ===
@@ -1499,7 +1828,7 @@ export default function Home() {
                             key={step.id}
                             className="p-4 hover:bg-muted/50 transition-colors"
                           >
-                            <div className="flex items-start gap-3 mb-2">
+                            <div className="flex items-start gap-3 mb-3">
                               {/* 썸네일 */}
                               <div className="flex-shrink-0">
                                 <img
@@ -1565,85 +1894,89 @@ export default function Home() {
                                   })}
                                 </p>
                               </div>
-                              <div className="flex flex-col gap-1">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={() => {
-                                    const link = document.createElement("a");
-                                    // 절대 URL로 변환하여 다운로드
-                                    const downloadUrl =
-                                      step.resultUrl.startsWith("http")
-                                        ? `${step.resultUrl}?download=true`
-                                        : `http://localhost:9090${step.resultUrl}?download=true`;
-                                    link.href = downloadUrl;
-                                    link.download = `processed_${
-                                      step.action
-                                    }_${Date.now()}`;
-                                    document.body.appendChild(link);
-                                    link.click();
-                                    document.body.removeChild(link);
-                                  }}
-                                >
-                                  <Download className="h-3 w-3 mr-1" />
-                                  저장
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 px-2 text-xs"
-                                  onClick={async () => {
-                                    if (!selectedFile) return;
+                            </div>
 
-                                    try {
-                                      const response = await fetch(
-                                        `http://localhost:9090/api/delete-processing-result/${selectedFile.id}/${step.id}`,
-                                        { method: "DELETE" }
+                            {/* 가로 배치된 버튼들 */}
+                            <div className="flex gap-2 mt-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 px-2 text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation(); // 카드 클릭 이벤트 방지
+                                  const link = document.createElement("a");
+                                  // 절대 URL로 변환하여 다운로드
+                                  const downloadUrl = step.resultUrl.startsWith(
+                                    "http"
+                                  )
+                                    ? `${step.resultUrl}?download=true`
+                                    : `http://localhost:9090${step.resultUrl}?download=true`;
+                                  link.href = downloadUrl;
+                                  link.download = `processed_${
+                                    step.action
+                                  }_${Date.now()}`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                }}
+                              >
+                                <Download className="h-3 w-3 mr-1" />
+                                저장
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 h-7 px-2 text-xs"
+                                onClick={async (e) => {
+                                  e.stopPropagation(); // 카드 클릭 이벤트 방지
+                                  if (!selectedFile) return;
+
+                                  try {
+                                    const response = await fetch(
+                                      `http://localhost:9090/api/delete-processing-result/${selectedFile.id}/${step.id}`,
+                                      { method: "DELETE" }
+                                    );
+
+                                    if (response.ok) {
+                                      // 로컬 상태에서도 제거
+                                      setProcessHistory((prev) =>
+                                        prev.filter((s) => s.id !== step.id)
+                                      );
+                                      console.log(
+                                        "작업 결과가 삭제되었습니다."
                                       );
 
-                                      if (response.ok) {
-                                        // 로컬 상태에서도 제거
-                                        setProcessHistory((prev) =>
-                                          prev.filter((s) => s.id !== step.id)
-                                        );
-                                        console.log(
-                                          "작업 결과가 삭제되었습니다."
-                                        );
-
-                                        // 선택된 파일 정보도 업데이트
-                                        if (selectedFile) {
-                                          const updatedFile = {
-                                            ...selectedFile,
-                                            processingResults:
-                                              selectedFile.processingResults?.filter(
-                                                (r) => r.id !== step.id
-                                              ) || [],
-                                          };
-                                          setSelectedFile(updatedFile);
-                                        }
-                                      } else {
-                                        const errorData = await response.json();
-                                        console.error(
-                                          "삭제 실패:",
-                                          errorData.error || response.statusText
-                                        );
-                                        alert(
-                                          `삭제 실패: ${
-                                            errorData.error ||
-                                            response.statusText
-                                          }`
-                                        );
+                                      // 선택된 파일 정보도 업데이트
+                                      if (selectedFile) {
+                                        const updatedFile = {
+                                          ...selectedFile,
+                                          processingResults:
+                                            selectedFile.processingResults?.filter(
+                                              (r) => r.id !== step.id
+                                            ) || [],
+                                        };
+                                        setSelectedFile(updatedFile);
                                       }
-                                    } catch (error) {
-                                      console.error("삭제 중 오류:", error);
+                                    } else {
+                                      const errorData = await response.json();
+                                      console.error(
+                                        "삭제 실패:",
+                                        errorData.error || response.statusText
+                                      );
+                                      alert(
+                                        `삭제 실패: ${
+                                          errorData.error || response.statusText
+                                        }`
+                                      );
                                     }
-                                  }}
-                                >
-                                  <Trash2 className="h-3 w-3 mr-1" />
-                                  삭제
-                                </Button>
-                              </div>
+                                  } catch (error) {
+                                    console.error("삭제 중 오류:", error);
+                                  }
+                                }}
+                              >
+                                <Trash2 className="h-3 w-3 mr-1" />
+                                삭제
+                              </Button>
                             </div>
                           </Card>
                         ))}
